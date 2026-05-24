@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Justen Sims - AI Developer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <nav>
+        <ul>
+            <li><a href="{{ url_for('pages.home') }}">Home</a></li>
+            <li><a href="{{ url_for('pages.about') }}">About</a></li>
+            <li><a href="{{ url_for('pages.contact') }}">Contact</a></li>
+            <li><a href="{{ url_for('pages.projects') }}">Projects</a></li>
+        </ul>
+    </nav>
+
+    <main>
+        <h1>Justen Sims</h1>
+        {% block content %}{% endblock %}
+    </main>
+</body>
+</html>
