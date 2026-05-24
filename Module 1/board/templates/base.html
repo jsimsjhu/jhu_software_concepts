@@ -6,12 +6,12 @@
 </head>
 <body>
     <nav>
-        <ul>
-            <li><a href="{{ url_for('pages.home') }}">Home</a></li>
-            <li><a href="{{ url_for('pages.about') }}">About</a></li>
-            <li><a href="{{ url_for('pages.contact') }}">Contact</a></li>
-            <li><a href="{{ url_for('pages.projects') }}">Projects</a></li>
-        </ul>
+    <ul>
+        <li><a href="{{ url_for('pages.home') }}" {% if active == 'home' %}class="active"{% endif %}>Home</a></li>
+        <li><a href="{{ url_for('pages.about') }}" {% if active == 'about' %}class="active"{% endif %}>About</a></li>
+        <li><a href="{{ url_for('pages.contact') }}" {% if active == 'contact' %}class="active"{% endif %}>Contact</a></li>
+        <li><a href="{{ url_for('pages.projects') }}" {% if active == 'projects' %}class="active"{% endif %}>Projects</a></li>
+    </ul>
     </nav>
 
     <main>

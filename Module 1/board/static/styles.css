@@ -38,3 +38,8 @@ main {
     background-color: white;
     border-radius: 8px;
 }
+nav ul li a.active {
+    background-color: #555;
+    border-radius: 4px;
+    padding: 0.5rem 1rem;
+}
