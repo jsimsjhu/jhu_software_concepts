@@ -1,0 +1,273 @@
+/* ==================================================================
+   GradCafe Applicant Analysis — Module 3 Stylesheet
+   ================================================================== */
+
+/* ---------- Reset & Base ---------- */
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #f4f6f9;
+    color: #2c3e50;
+    line-height: 1.6;
+    padding: 2rem 1rem;
+}
+
+/* ---------- Container ---------- */
+.container {
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+/* ---------- Header ---------- */
+header {
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+
+header h1 {
+    font-size: 2rem;
+    font-weight: 600;
+    color: #1a365d;
+    margin-bottom: 0.25rem;
+}
+
+.subtitle {
+    color: #5a6a7a;
+    font-size: 0.95rem;
+}
+
+/* ---------- Toolbar ---------- */
+.toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    background: #fff;
+    padding: 1rem 1.25rem;
+    border-radius: 10px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.07);
+    margin-bottom: 1rem;
+}
+
+/* ---------- Buttons ---------- */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.6rem 1.2rem;
+    font-size: 0.95rem;
+    font-weight: 500;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+    white-space: nowrap;
+}
+
+.btn:active {
+    transform: scale(0.97);
+}
+
+.btn-primary {
+    background: #2563eb;
+    color: #fff;
+}
+
+.btn-primary:hover {
+    background: #1d4ed8;
+}
+
+.btn-secondary {
+    background: #e2e8f0;
+    color: #1e293b;
+}
+
+.btn-secondary:hover {
+    background: #cbd5e1;
+}
+
+/* ---------- Status Message ---------- */
+.status-msg {
+    flex: 1;
+    min-width: 200px;
+    font-size: 0.9rem;
+    color: #333;
+    padding: 0.3rem 0.5rem;
+}
+
+/* ---------- Spinner ---------- */
+.spinner {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: #fef9e7;
+    border: 1px solid #f4d03f;
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.spinner-icon {
+    width: 20px;
+    height: 20px;
+    border: 3px solid #f4d03f;
+    border-top-color: #d4a017;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ---------- Error Card ---------- */
+.error-card {
+    background: #fdecea;
+    border: 1px solid #e74c3c;
+    border-radius: 10px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.error-card h2 {
+    color: #c0392b;
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
+}
+
+.error-card p {
+    color: #555;
+    font-size: 0.95rem;
+}
+
+.error-card code {
+    background: #f8d7da;
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+/* ---------- Results Section ---------- */
+.results-section {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1rem;
+}
+
+/* ---------- Cards ---------- */
+.card {
+    background: #fff;
+    border-radius: 10px;
+    padding: 1.25rem 1.5rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    transition: box-shadow 0.2s;
+}
+
+.card:hover {
+    box-shadow: 0 4px 16px rgba(0,0,0,0.10);
+}
+
+.card h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #1e293b;
+    margin-bottom: 0.5rem;
+    border-bottom: 2px solid #eef2f7;
+    padding-bottom: 0.4rem;
+}
+
+.result-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #2563eb;
+    margin: 0.25rem 0;
+}
+
+.result-desc {
+    font-size: 0.85rem;
+    color: #64748b;
+    margin-top: 0.4rem;
+}
+
+/* ---------- Original-question cards accent ---------- */
+.card-original {
+    border-left: 4px solid #8b5cf6;
+}
+
+.card-original .result-value {
+    color: #7c3aed;
+}
+
+/* ---------- Metric Table (for Q3, Q10) ---------- */
+.metric-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.5rem 0;
+}
+
+.metric-table tr {
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.metric-table td {
+    padding: 0.35rem 0.5rem;
+    font-size: 0.9rem;
+}
+
+.metric-table td:first-child {
+    color: #64748b;
+    font-weight: 500;
+}
+
+.metric-table .val {
+    text-align: right;
+    font-weight: 600;
+    color: #2563eb;
+}
+
+/* ---------- Empty State ---------- */
+.empty-state {
+    background: #fff;
+    border-radius: 10px;
+    padding: 3rem;
+    text-align: center;
+    color: #94a3b8;
+    font-size: 1rem;
+}
+
+.empty-state code {
+    background: #f1f5f9;
+    padding: 0.1rem 0.3rem;
+    border-radius: 4px;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 640px) {
+    body { padding: 1rem 0.5rem; }
+
+    header h1 { font-size: 1.5rem; }
+
+    .toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .btn { justify-content: center; }
+
+    .status-msg { text-align: center; }
+
+    .results-section {
+        grid-template-columns: 1fr;
+    }
+
+    .result-value {
+        font-size: 1.6rem;
+    }
+}
