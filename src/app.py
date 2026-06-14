@@ -17,7 +17,8 @@ from datetime import datetime
 
 from flask import Flask, render_template, jsonify
 
-import psycopg
+# NOTE: psycopg is imported lazily within create_app() so that the module
+# can be imported without requiring libpq (useful for tests that mock the DB).
 
 # ---------------------------------------------------------------------------
 # Constants  (not overridable per-instance)
@@ -76,6 +77,7 @@ def create_app(test_config=None):
         Return a new psycopg connection using the configured DATABASE_URL.
         Each call creates a fresh connection (required for thread safety).
         """
+        import psycopg
         url = app.config["DATABASE_URL"]
         return psycopg.connect(url)
 
@@ -96,7 +98,7 @@ def create_app(test_config=None):
             rows = cur.fetchall()
             cur.close()
             return rows
-        except psycopg.Error as e:
+        except Exception as e:
             raise RuntimeError(f"Database error: {e}") from e
         finally:
             if conn:
@@ -326,7 +328,7 @@ def create_app(test_config=None):
                     f"appended {inserted} new record(s) to database."
                 )
 
-            except psycopg.Error as e:
+            except Exception as e:
                 conn.rollback()
                 raise RuntimeError(f"DB insert error during scrape: {e}") from e
             finally:
