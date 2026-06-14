@@ -350,6 +350,7 @@ def create_app(test_config=None):
     # ------------------------------------------------------------------
 
     @app.route("/")
+    @app.route("/analysis")
     def index():
         """
         Main page: run all queries and render the template with results.
