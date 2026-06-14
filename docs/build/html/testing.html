@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Testing Guide &#8212; GradCafe Applicant Analysis 1.0.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
+    <script src="_static/documentation_options.js?v=8d563738"></script>
+    <script src="_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="API Reference" href="api.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="testing-guide">
+<h1>Testing Guide<a class="headerlink" href="#testing-guide" title="Link to this heading">¶</a></h1>
+<p>The test suite uses <strong>pytest</strong> with extensive <strong>monkeypatch</strong>-based mocking
+to run entirely without a real PostgreSQL database or Selenium browser.</p>
+<section id="running-tests">
+<h2>Running Tests<a class="headerlink" href="#running-tests" title="Link to this heading">¶</a></h2>
+<p>Run the full suite:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="o">-</span><span class="n">m</span> <span class="n">pytest</span> <span class="n">tests</span><span class="o">/</span>
+</pre></div>
+</div>
+<p>Run with coverage:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="o">-</span><span class="n">m</span> <span class="n">pytest</span> <span class="n">tests</span><span class="o">/</span> <span class="o">--</span><span class="n">cov</span><span class="o">=</span><span class="n">src</span> <span class="o">--</span><span class="n">cov</span><span class="o">-</span><span class="n">report</span><span class="o">=</span><span class="n">term</span><span class="o">-</span><span class="n">missing</span>
+</pre></div>
+</div>
+<p>Run a specific test file:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="o">-</span><span class="n">m</span> <span class="n">pytest</span> <span class="n">tests</span><span class="o">/</span><span class="n">test_db</span><span class="o">.</span><span class="n">py</span> <span class="o">-</span><span class="n">v</span>
+</pre></div>
+</div>
+</section>
+<section id="test-markers-tags">
+<h2>Test Markers (Tags)<a class="headerlink" href="#test-markers-tags" title="Link to this heading">¶</a></h2>
+<p>Each test is tagged with one or more markers so you can run targeted
+subsets:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Web page / route tests</span>
+<span class="n">python</span> <span class="o">-</span><span class="n">m</span> <span class="n">pytest</span> <span class="o">-</span><span class="n">m</span> <span class="s2">&quot;web&quot;</span>
+
+<span class="c1"># Button endpoint behavior</span>
+<span class="n">python</span> <span class="o">-</span><span class="n">m</span> <span class="n">pytest</span> <span class="o">-</span><span class="n">m</span> <span class="s2">&quot;buttons&quot;</span>
+
+<span class="c1"># Analysis / formatting tests</span>
+<span class="n">python</span> <span class="o">-</span><span class="n">m</span> <span class="n">pytest</span> <span class="o">-</span><span class="n">m</span> <span class="s2">&quot;analysis&quot;</span>
+
+<span class="c1"># Database-layer tests (schema, inserts, queries)</span>
+<span class="n">python</span> <span class="o">-</span><span class="n">m</span> <span class="n">pytest</span> <span class="o">-</span><span class="n">m</span> <span class="s2">&quot;db&quot;</span>
+
+<span class="c1"># End-to-end integration tests</span>
+<span class="n">python</span> <span class="o">-</span><span class="n">m</span> <span class="n">pytest</span> <span class="o">-</span><span class="n">m</span> <span class="s2">&quot;integration&quot;</span>
+
+<span class="c1"># Combined: all database-related tests</span>
+<span class="n">python</span> <span class="o">-</span><span class="n">m</span> <span class="n">pytest</span> <span class="o">-</span><span class="n">m</span> <span class="s2">&quot;db or integration&quot;</span>
+
+<span class="c1"># All tests except integration</span>
+<span class="n">python</span> <span class="o">-</span><span class="n">m</span> <span class="n">pytest</span> <span class="o">-</span><span class="n">m</span> <span class="s2">&quot;not integration&quot;</span>
+</pre></div>
+</div>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Marker</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">web</span></code></p></td>
+<td><p>Flask route / page-rendering tests</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">buttons</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">pull_data()</span></code> / <code class="docutils literal notranslate"><span class="pre">update_analysis()</span></code> behavior</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">analysis</span></code></p></td>
+<td><p>Query results formatting and output</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">db</span></code></p></td>
+<td><p>Database schema, inserts, and select tests</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">integration</span></code></p></td>
+<td><p>End-to-end load-then-query flows</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="test-selectors">
+<h2>Test Selectors<a class="headerlink" href="#test-selectors" title="Link to this heading">¶</a></h2>
+<p>Front-end tests use <code class="docutils literal notranslate"><span class="pre">data-testid</span></code> attributes for reliable element
+selection instead of fragile CSS classes or XPath:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="n">button</span> <span class="n">data</span><span class="o">-</span><span class="n">testid</span><span class="o">=</span><span class="s2">&quot;pull-data-btn&quot;</span><span class="o">&gt;</span><span class="n">Pull</span> <span class="n">Data</span><span class="o">&lt;/</span><span class="n">button</span><span class="o">&gt;</span>
+<span class="o">&lt;</span><span class="n">button</span> <span class="n">data</span><span class="o">-</span><span class="n">testid</span><span class="o">=</span><span class="s2">&quot;update-analysis-btn&quot;</span><span class="o">&gt;</span><span class="n">Update</span> <span class="n">Analysis</span><span class="o">&lt;/</span><span class="n">button</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p>In your tests, select these elements with:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">driver</span><span class="o">.</span><span class="n">find_element</span><span class="p">(</span><span class="n">By</span><span class="o">.</span><span class="n">CSS_SELECTOR</span><span class="p">,</span> <span class="s2">&quot;[data-testid=&#39;pull-data-btn&#39;]&quot;</span><span class="p">)</span>
+<span class="n">driver</span><span class="o">.</span><span class="n">find_element</span><span class="p">(</span><span class="n">By</span><span class="o">.</span><span class="n">CSS_SELECTOR</span><span class="p">,</span> <span class="s2">&quot;[data-testid=&#39;update-analysis-btn&#39;]&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Or in Playwright / Selenium:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">page</span><span class="o">.</span><span class="n">locator</span><span class="p">(</span><span class="s2">&quot;[data-testid=&#39;pull-data-btn&#39;]&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">click</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+<section id="test-fixtures">
+<h2>Test Fixtures<a class="headerlink" href="#test-fixtures" title="Link to this heading">¶</a></h2>
+<section id="mock-conn">
+<h3><code class="docutils literal notranslate"><span class="pre">mock_conn</span></code><a class="headerlink" href="#mock-conn" title="Link to this heading">¶</a></h3>
+<p>Returns a <code class="docutils literal notranslate"><span class="pre">MagicMock</span></code> that substitutes for a <code class="docutils literal notranslate"><span class="pre">psycopg</span></code> connection.
+The mock’s cursor supports the context-manager protocol so that
+<code class="docutils literal notranslate"><span class="pre">with</span> <span class="pre">conn.cursor()</span> <span class="pre">as</span> <span class="pre">cur:</span></code> works correctly.</p>
+</section>
+<section id="busy-client">
+<h3><code class="docutils literal notranslate"><span class="pre">busy_client</span></code><a class="headerlink" href="#busy-client" title="Link to this heading">¶</a></h3>
+<p>Creates a Flask test client with <code class="docutils literal notranslate"><span class="pre">BUSY=True</span></code> in the app config,
+simulating an in-progress data pull without actually running the
+scraper.</p>
+</section>
+<section id="mock-json-files">
+<h3><code class="docutils literal notranslate"><span class="pre">mock_json_files</span></code><a class="headerlink" href="#mock-json-files" title="Link to this heading">¶</a></h3>
+<p>Creates temporary <code class="docutils literal notranslate"><span class="pre">applicant_data.json</span></code> and
+<code class="docutils literal notranslate"><span class="pre">llm_extend_applicant_data.json</span></code> files with known test data and
+returns their paths.</p>
+</section>
+</section>
+<section id="mocking-strategy-summary">
+<h2>Mocking Strategy Summary<a class="headerlink" href="#mocking-strategy-summary" title="Link to this heading">¶</a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Dependency</p></th>
+<th class="head"><p>How It’s Mocked</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>PostgreSQL (<code class="docutils literal notranslate"><span class="pre">psycopg</span></code>)</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">sys.modules[&quot;psycopg&quot;]</span> <span class="pre">=</span> <span class="pre">MagicMock()</span></code> at
+import time.  <code class="docutils literal notranslate"><span class="pre">connect()</span></code> returns a mock
+connection with a context-manager cursor.</p></td>
+</tr>
+<tr class="row-odd"><td><p>Selenium WebDriver</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">FakeDriver</span></code> class with stubbed
+<code class="docutils literal notranslate"><span class="pre">page_source</span></code>, <code class="docutils literal notranslate"><span class="pre">get</span></code>, <code class="docutils literal notranslate"><span class="pre">quit</span></code>,
+<code class="docutils literal notranslate"><span class="pre">find_elements</span></code>, <code class="docutils literal notranslate"><span class="pre">find_element</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">WebDriverWait</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">FakeWait</span></code> class whose <code class="docutils literal notranslate"><span class="pre">until()</span></code> returns
+immediately (no real timeout).</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">time.sleep</span></code></p></td>
+<td><p>Replaced with <code class="docutils literal notranslate"><span class="pre">lambda</span> <span class="pre">s:</span> <span class="pre">None</span></code> (no-op).</p></td>
+</tr>
+<tr class="row-even"><td><p>GradCafe HTML</p></td>
+<td><p>Static HTML strings served via
+<code class="docutils literal notranslate"><span class="pre">FakeDriver.page_source</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">DATABASE_URL</span></code></p></td>
+<td><p>Set to <code class="docutils literal notranslate"><span class="pre">None</span></code> or a mock URL via
+<code class="docutils literal notranslate"><span class="pre">test_config</span></code>.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">GradCafe Applicant Analysis</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="architecture.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Testing Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#running-tests">Running Tests</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#test-markers-tags">Test Markers (Tags)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#test-selectors">Test Selectors</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#test-fixtures">Test Fixtures</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#mocking-strategy-summary">Mocking Strategy Summary</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="api.html" title="previous chapter">API Reference</a></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2026, JHU Software Concepts.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.1.0</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="_sources/testing.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

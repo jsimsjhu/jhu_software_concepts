@@ -449,7 +449,7 @@ def scrape_gradcafe(
 # ──────────────────────────────────────────────
 # CLI Entry Point
 # ──────────────────────────────────────────────
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     import argparse
 
     parser = argparse.ArgumentParser(

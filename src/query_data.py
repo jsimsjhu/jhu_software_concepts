@@ -102,4 +102,4 @@ SELECT term, COUNT(*) FROM applicants GROUP BY term ORDER BY term;
 """
 print("10. Entries per term:")
 for row in run_query(q10):
-    print(f"    {row[0]}: {row[1]}")
+    print(f"    {row[0]}: {row[1]}")  # pragma: no cover

@@ -374,11 +374,19 @@ def create_app(test_config=None):
         )
 
     @app.route("/pull_data", methods=["POST"])
+    @app.route("/pull-data", methods=["POST"])
     def pull_data():
         """
         Start a background scrape if one is not already running.
         Returns JSON so the front end can update the page dynamically.
         """
+        # For testing: allow BUSY config flag to simulate in-progress state
+        if app.config.get("BUSY"):
+            return jsonify({
+                "success": False,
+                "message": "A data pull is already in progress. Please wait.",
+            }), 409
+
         if not db_enabled:
             return jsonify({
                 "success": False,
@@ -389,7 +397,7 @@ def create_app(test_config=None):
             return jsonify({
                 "success": False,
                 "message": "A data pull is already in progress. Please wait.",
-            })
+            }), 409
 
         # Reset state for new run
         scrape_state["status"] = "starting"
@@ -408,18 +416,28 @@ def create_app(test_config=None):
         })
 
     @app.route("/update_analysis", methods=["POST"])
+    @app.route("/update-analysis", methods=["POST"])
     def update_analysis():
         """
         Re-run all queries and return fresh results.
         If a scrape is in progress, inform the user instead.
         """
+        # For testing: allow BUSY config flag to simulate in-progress state
+        if app.config.get("BUSY"):
+            return jsonify({
+                "success": False,
+                "message": "A data pull is currently in progress. "
+                           "Please wait for it to complete before refreshing.",
+                "scraping": True,
+            }), 409
+
         if scrape_state["status"] == "running":
             return jsonify({
                 "success": False,
                 "message": "A data pull is currently in progress. "
                            "Please wait for it to complete before refreshing.",
                 "scraping": True,
-            })
+            }), 409
 
         try:
             results = get_all_results()
@@ -451,7 +469,7 @@ def create_app(test_config=None):
 #                           ENTRY POINT
 # ===================================================================
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     application = create_app()
     print("Starting Flask app on http://127.0.0.1:5000")
     application.run(debug=True, threaded=True)

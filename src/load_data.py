@@ -80,7 +80,7 @@ def load_data(conn, data_file, llm_file):
     conn.commit()
     print(f"Inserted {len(rows)} rows.")
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     conn = psycopg.connect(
         dbname=DB_NAME,
         user=DB_USER,
