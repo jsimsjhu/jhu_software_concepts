@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GradCafe Applicant Analysis — Module 3</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+
+<div class="container">
+
+    <!-- ============================================================
+         HEADER
+         ============================================================ -->
+    <header>
+        <h1>📊 GradCafe Applicant Analysis</h1>
+        <p class="subtitle">
+            JHU Software Concepts — Module 3 &middot; PostgreSQL &middot; Flask
+        </p>
+    </header>
+
+    <!-- ============================================================
+         BUTTONS & STATUS BAR
+         ============================================================ -->
+    <section class="toolbar">
+        <button id="btn-pull" class="btn btn-primary" onclick="pullData()" data-testid="pull-data-btn">
+            ⬇️ Pull Data
+        </button>
+        <button id="btn-update" class="btn btn-secondary" onclick="updateAnalysis()" data-testid="update-analysis-btn">
+            🔄 Update Analysis
+        </button>
+        <span id="status-message" class="status-msg">
+            {% if scrape_state and scrape_state.message %}
+                {{ scrape_state.message }}
+            {% else %}
+                Ready. Click <strong>Pull Data</strong> to fetch new GradCafe entries,
+                or <strong>Update Analysis</strong> to refresh the table below.
+            {% endif %}
+        </span>
+    </section>
+
+    <!-- Spinner shown during background operations -->
+    <div id="spinner" class="spinner" style="display:none;">
+        <div class="spinner-icon"></div>
+        <span id="spinner-text">Working…</span>
+    </div>
+
+    <!-- ============================================================
+         DATABASE ERROR
+         ============================================================ -->
+    {% if not db_ok %}
+    <div class="error-card">
+        <h2>⚠️ Database Connection Error</h2>
+        <p>{{ db_error }}</p>
+        <p>Make sure PostgreSQL is running and the <code>applicants</code> table exists.</p>
+    </div>
+    {% endif %}
+
+    <!-- ============================================================
+         RESULTS (dynamically updated via _results.html partial)
+         ============================================================ -->
+    <div id="results-container">
+        {% include "_results.html" %}
+    </div>
+
+</div>
+
+<!-- ================================================================
+     JAVASCRIPT — handles button clicks, polling, dynamic updates
+     ================================================================ -->
+<script>
+    let statusEl = document.getElementById('status-message');
+    let spinnerEl = document.getElementById('spinner');
+    let spinnerText = document.getElementById('spinner-text');
+    let resultsContainer = document.getElementById('results-container');
+
+    // ----- Show / hide spinner -----
+    function showSpinner(msg) {
+        spinnerText.textContent = msg;
+        spinnerEl.style.display = 'flex';
+    }
+    function hideSpinner() {
+        spinnerEl.style.display = 'none';
+    }
+
+    // ----- Set status message -----
+    function setStatus(msg, isError) {
+        statusEl.innerHTML = msg;
+        statusEl.style.color = isError ? '#dc3545' : '#333';
+    }
+
+    // ----- Pull Data -----
+    function pullData() {
+        if (spinnerEl.style.display === 'flex') {
+            setStatus('A data pull is already in progress. Please wait.', true);
+            return;
+        }
+
+        showSpinner('Starting data pull…');
+        setStatus('Starting data pull from GradCafe…');
+
+        fetch('/pull_data', { method: 'POST' })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    setStatus(data.message);
+                    // Start polling for completion
+                    pollScrapeStatus();
+                } else {
+                    hideSpinner();
+                    setStatus(data.message, true);
+                }
+            })
+            .catch(err => {
+                hideSpinner();
+                setStatus('Network error: ' + err.message, true);
+            });
+    }
+
+    // ----- Poll scrape status every 3 seconds until done -----
+    function pollScrapeStatus() {
+        let interval = setInterval(() => {
+            fetch('/scrape_status')
+                .then(r => r.json())
+                .then(state => {
+                    setStatus(state.message);
+
+                    if (state.status === 'completed' || state.status === 'error') {
+                        clearInterval(interval);
+                        hideSpinner();
+                        // Automatically refresh analysis
+                        fetch('/update_analysis', { method: 'POST' })
+                            .then(r => r.json())
+                            .then(data => {
+                                if (data.success) {
+                                    resultsContainer.innerHTML = data.html;
+                                    setStatus(data.message + ' '
+                                        + (state.records_added
+                                            ? ` (${state.records_added} new records added)`
+                                            : ''),
+                                        state.status === 'error');
+                                } else {
+                                    setStatus(data.message, true);
+                                }
+                            })
+                            .catch(err => {
+                                setStatus('Error refreshing analysis: ' + err.message, true);
+                            });
+                    } else if (state.status === 'error') {
+                        clearInterval(interval);
+                        hideSpinner();
+                    }
+                })
+                .catch(err => {
+                    clearInterval(interval);
+                    hideSpinner();
+                    setStatus('Status polling error: ' + err.message, true);
+                });
+        }, 3000);
+    }
+
+    // ----- Update Analysis -----
+    function updateAnalysis() {
+        if (spinnerEl.style.display === 'flex') {
+            setStatus('A data pull is in progress. Please wait for it to finish.', true);
+            return;
+        }
+
+        showSpinner('Updating analysis…');
+        setStatus('Refreshing query results…');
+
+        fetch('/update_analysis', { method: 'POST' })
+            .then(r => r.json())
+            .then(data => {
+                hideSpinner();
+                if (data.success) {
+                    resultsContainer.innerHTML = data.html;
+                    setStatus(data.message);
+                } else {
+                    setStatus(data.message, true);
+                }
+            })
+            .catch(err => {
+                hideSpinner();
+                setStatus('Network error: ' + err.message, true);
+            });
+    }
+</script>
+
+</body>
+</html>

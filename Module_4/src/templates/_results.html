@@ -1,0 +1,114 @@
+<!-- ================================================================
+     RESULTS SUMMARY — rendered server-side, loaded via AJAX on update
+     ================================================================ -->
+{% if results %}
+
+<section class="results-section">
+
+    <!-- ---- Q1 ---- -->
+    <div class="card">
+        <h3>1. Fall 2026 Applicants</h3>
+        <p class="result-value">Answer: {{ results.q1_fall_2026_count }}</p>
+        <p class="result-desc">Total entries that applied for the <strong>Fall 2026</strong> term.</p>
+    </div>
+
+    <!-- ---- Q2 ---- -->
+    <div class="card">
+        <h3>2. International Students</h3>
+        <p class="result-value">Answer: {{ results.q2_pct_international }}%</p>
+        <p class="result-desc">Percentage of all applicants who are <strong>International</strong> students.</p>
+    </div>
+
+    <!-- ---- Q3 ---- -->
+    <div class="card">
+        <h3>3. Average Scores (where provided)</h3>
+        <table class="metric-table">
+            <tr>
+                <td>GPA</td>
+                <td class="val">Answer: {{ results.q3_avg_scores[0] or '—' }}</td>
+            </tr>
+            <tr>
+                <td>GRE (Quant)</td>
+                <td class="val">Answer: {{ results.q3_avg_scores[1] or '—' }}</td>
+            </tr>
+            <tr>
+                <td>GRE (Verbal)</td>
+                <td class="val">Answer: {{ results.q3_avg_scores[2] or '—' }}</td>
+            </tr>
+            <tr>
+                <td>GRE (AW)</td>
+                <td class="val">Answer: {{ results.q3_avg_scores[3] or '—' }}</td>
+            </tr>
+        </table>
+        <p class="result-desc">Average GPA & GRE scores of applicants who reported them.</p>
+    </div>
+
+    <!-- ---- Q4 ---- -->
+    <div class="card">
+        <h3>4. American Students — Fall 2026 GPA</h3>
+        <p class="result-value">Answer: {{ results.q4_avg_gpa_american_fall2026 or '—' }}</p>
+        <p class="result-desc">Average GPA of <strong>American</strong> applicants in Fall 2026.</p>
+    </div>
+
+    <!-- ---- Q5 ---- -->
+    <div class="card">
+        <h3>5. Fall 2026 — Acceptance Rate</h3>
+        <p class="result-value">Answer: {{ results.q5_pct_accepted_fall2026 }}%</p>
+        <p class="result-desc">Percentage of Fall 2026 applicants who were <strong>Accepted</strong>.</p>
+    </div>
+
+    <!-- ---- Q6 ---- -->
+    <div class="card">
+        <h3>6. Fall 2026 — Accepted GPA</h3>
+        <p class="result-value">Answer: {{ results.q6_avg_gpa_accepted_fall2026 or '—' }}</p>
+        <p class="result-desc">Average GPA of <strong>Accepted</strong> Fall 2026 applicants.</p>
+    </div>
+
+    <!-- ---- Q7 ---- -->
+    <div class="card">
+        <h3>7. JHU — Masters in CS</h3>
+        <p class="result-value">Answer: {{ results.q7_jhu_masters_cs }}</p>
+        <p class="result-desc">Count of applicants for <strong>JHU Masters in Computer Science</strong>
+        (identified via LLM-extended university name).</p>
+    </div>
+
+    <!-- ---- Q8 ---- -->
+    <div class="card">
+        <h3>8. Top PhD Acceptances (2026)</h3>
+        <p class="result-value">Answer: {{ results.q8_top_phd_accepts }}</p>
+        <p class="result-desc">Fall 2026 <strong>PhD in CS</strong> acceptances at
+        <strong>Georgetown, MIT, Stanford & Carnegie Mellon</strong>.</p>
+    </div>
+
+    <!-- ---- Q9 (My Original) ---- -->
+    <div class="card card-original">
+        <h3>9. 🌍 International PhD Applicants</h3>
+        <p class="result-value">Answer: {{ results.q9_intl_phd }}</p>
+        <p class="result-desc"><em>My question:</em> How many <strong>International</strong> applicants
+        applied for a <strong>PhD</strong> program?</p>
+    </div>
+
+    <!-- ---- Q10 (My Original) ---- -->
+    <div class="card card-original">
+        <h3>10. 📅 Entries per Term</h3>
+        <table class="metric-table">
+            {% for term, count in results.q10_entries_per_term %}
+            <tr>
+                <td>{{ term }}</td>
+                <td class="val">Answer: {{ count }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+        <p class="result-desc"><em>My question:</em> How many entries exist for each term?</p>
+    </div>
+
+</section>
+
+{% else %}
+    <div class="empty-state">
+        <p>Answer: <em>No results to display.</em></p>
+        {% if db_ok is not defined or db_ok %}
+        <p>The <code>applicants</code> table may be empty.</p>
+        {% endif %}
+    </div>
+{% endif %}
