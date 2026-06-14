@@ -1,10 +1,10 @@
 """
-Flask Web Application — Module 3, JHU Software Concepts
-======================================================
+Flask Web Application — Module 3 / Module 4, JHU Software Concepts
+===================================================================
 Connects to PostgreSQL, runs 10 analytical queries on the `applicants` table,
 displays results in a styled web page, and provides:
-  - "Pull Data" button → runs scrape.py to fetch NEW GradCafe data (appends only)
-  - "Update Analysis" button → refreshes displayed query results
+  - "Pull Data" button triggers a background scrape of new GradCafe data
+  - "Update Analysis" button refreshes the displayed query results
 
 Thread-safe: uses a threading.Lock to prevent simultaneous scrape requests.
 """
@@ -23,7 +23,7 @@ from flask import Flask, render_template, jsonify
 # ---------------------------------------------------------------------------
 # Constants  (not overridable per-instance)
 # ---------------------------------------------------------------------------
-SCRAPE_OUTPUT = "pulled_data.json"          # temp file for newly scraped data
+SCRAPE_OUTPUT = "pulled_data.json"
 LLM_EXTEND_FILE = "llm_extend_applicant_data.json"
 
 
@@ -88,8 +88,10 @@ def create_app(test_config=None):
         Raises RuntimeError if database is disabled in config.
         """
         if not db_enabled:
-            raise RuntimeError("Database is not configured (TESTING mode). "
-                               "Mock get_all_results() or provide DATABASE_URL.")
+            raise RuntimeError(
+                "Database is not configured (TESTING mode). "
+                "Mock get_all_results() or provide DATABASE_URL."
+            )
         conn = None
         try:
             conn = get_connection()
@@ -233,23 +235,19 @@ def create_app(test_config=None):
         """
         nonlocal scrape_state
 
-        # Lock is already held by the caller (pull_data route).
-        # We just do the work and release in finally.
         try:
             # -- Import scrape module (must be in same directory) --
             sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
             import scrape
 
             scrape_state["status"] = "running"
-            scrape_state["message"] = "Pulling data from GradCafe…"
+            scrape_state["message"] = "Pulling data from GradCafe..."
             scrape_state["started_at"] = datetime.now().isoformat()
 
-            # Run the scraper — limit to a reasonable number of pages so it
-            # doesn't run forever.  Use a dedicated output file to avoid
-            # overwriting the original applicant_data.json.
+            # Run the scraper
             scrape.scrape_gradcafe(
                 search_query="computer science",
-                max_pages=5,                             # ← tune as desired
+                max_pages=5,
                 output_file=SCRAPE_OUTPUT,
                 headless=True,
             )
@@ -287,7 +285,7 @@ def create_app(test_config=None):
                     if result_url and result_url in existing_urls:
                         continue          # skip duplicate
                     if result_url:
-                        existing_urls.add(result_url)   # avoid intra-batch dupes
+                        existing_urls.add(result_url)
 
                     rid = rec.get("result_id")
                     llm = llm_lookup.get(rid, {})
@@ -401,7 +399,7 @@ def create_app(test_config=None):
 
         # Reset state for new run
         scrape_state["status"] = "starting"
-        scrape_state["message"] = "Starting data pull…"
+        scrape_state["message"] = "Starting data pull..."
         scrape_state["records_added"] = 0
         scrape_state["total_scraped"] = 0
         scrape_state["started_at"] = None
@@ -441,7 +439,6 @@ def create_app(test_config=None):
 
         try:
             results = get_all_results()
-            # Re-render just the results partial for a dynamic update
             html = render_template(
                 "_results.html",
                 results=results,

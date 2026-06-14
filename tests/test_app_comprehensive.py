@@ -644,10 +644,18 @@ class TestCoverageGaps:
             assert resp.status_code == 200
 
         import time
-        time.sleep(0.5)
+        # Poll for background thread to complete
+        for _ in range(20):
+            time.sleep(0.25)
+            with app.test_client() as client:
+                status = client.get("/scrape_status").get_json()
+                if status["status"] in ("completed", "error"):
+                    break
+        else:
+            with app.test_client() as client:
+                status = client.get("/scrape_status").get_json()
+            assert False, f"Background scrape did not complete. Status: {status['status']}"
 
-        with app.test_client() as client:
-            status = client.get("/scrape_status").get_json()
-            assert status["status"] == "error"
+        assert status["status"] == "error", f"Expected 'error', got '{status['status']}'"
         # Verify rollback was called
         conn.rollback.assert_called_once()
