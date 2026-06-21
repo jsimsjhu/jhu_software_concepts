@@ -39,7 +39,7 @@ jobs:
 
       - name: Run Pylint
         env:
-          PYTHONPATH: ./src
+          PYTHONPATH: ${{ github.workspace }}/Module_5/src
         run: |
           cd Module_5
           pylint src/ --fail-under=10
@@ -51,7 +51,7 @@ jobs:
 
       - name: Run Pytest with coverage
         env:
-          PYTHONPATH: ./src
+          PYTHONPATH: ${{ github.workspace }}/Module_5/src
         run: |
           cd Module_5
           python -m pytest tests/ --cov=src --cov-report=term-missing --cov-fail-under=100
