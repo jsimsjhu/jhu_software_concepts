@@ -5,7 +5,7 @@
 import psycopg
 
 # pylint: disable=duplicate-code
-from .db_helpers import DB_NAME, DB_USER, DB_PASSWORD, DB_HOST
+from db_helpers import DB_NAME, DB_USER, DB_PASSWORD, DB_HOST
 
 
 def run_query(query):
