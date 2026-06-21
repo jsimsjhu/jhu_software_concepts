@@ -41,12 +41,14 @@ def client(app):
 # Factory tests
 # ------------------------------------------------------------------
 
+@pytest.mark.web
 def test_create_app_returns_flask_instance(app):
     """The factory should return a proper Flask instance."""
     assert app is not None
     assert app.config["TESTING"] is True
 
 
+@pytest.mark.web
 def test_create_app_without_test_config():
     """Without test_config the app defaults to production-like settings."""
     application = create_app()
@@ -56,6 +58,7 @@ def test_create_app_without_test_config():
         "postgresql://postgres:postgres@localhost/postgres"
 
 
+@pytest.mark.web
 def test_create_app_disables_db_when_url_is_none(app):
     """Setting DATABASE_URL to None should disable the database."""
     assert app.config["DATABASE_URL"] is None
@@ -65,12 +68,14 @@ def test_create_app_disables_db_when_url_is_none(app):
 # Route tests (no database required)
 # ------------------------------------------------------------------
 
+@pytest.mark.web
 def test_index_returns_200(client):
     """The index route should return HTTP 200 even without a database."""
     response = client.get("/")
     assert response.status_code == 200
 
 
+@pytest.mark.web
 def test_index_shows_db_error(client):
     """When the DB is disabled, the index should display an error message."""
     response = client.get("/")
@@ -80,6 +85,7 @@ def test_index_shows_db_error(client):
            response.status_code == 200
 
 
+@pytest.mark.buttons
 def test_pull_data_returns_400_when_db_disabled(client):
     """
     ``/pull_data`` should reject the request when no database is configured,
@@ -93,6 +99,7 @@ def test_pull_data_returns_400_when_db_disabled(client):
     assert "Database is not available" in data["message"]
 
 
+@pytest.mark.buttons
 def test_update_analysis_returns_error_when_db_disabled(client):
     """
     ``/update_analysis`` should gracefully report the database error.
@@ -105,6 +112,7 @@ def test_update_analysis_returns_error_when_db_disabled(client):
     assert "Failed to update analysis" in data["message"]
 
 
+@pytest.mark.web
 def test_scrape_status_returns_state(client):
     """The scrape status endpoint should return the current state."""
     response = client.get("/scrape_status")
@@ -118,6 +126,7 @@ def test_scrape_status_returns_state(client):
 # Template / data-testid checks
 # ------------------------------------------------------------------
 
+@pytest.mark.web
 def test_index_contains_data_testid_attributes(client):
     """
     The index template should include ``data-testid`` attributes on the
@@ -133,6 +142,7 @@ def test_index_contains_data_testid_attributes(client):
 # Database-mocking example
 # ------------------------------------------------------------------
 
+@pytest.mark.web
 def test_index_renders_with_mocked_results(client, monkeypatch):
     """
     Demonstrate how to test the index route with a mocked ``get_all_results``,

@@ -186,6 +186,7 @@ class FakeDriver:
 #           TESTS FOR PURE PARSING FUNCTIONS
 # ======================================================================
 
+@pytest.mark.db
 class TestParseStatusBadgeDesktop:
     """parse_status_badge_desktop extracts status + date from badge text."""
 
@@ -227,6 +228,7 @@ class TestParseStatusBadgeDesktop:
         assert result["decision_date"] is None
 
 
+@pytest.mark.db
 class TestParseDetailBadges:
     """parse_detail_badges extracts term, international, GPA, GRE."""
 
@@ -291,6 +293,7 @@ class TestParseDetailBadges:
         assert "Some Unknown Tag" in result["other_badges"]
 
 
+@pytest.mark.db
 class TestParseComments:
     """parse_comments extracts the comment text from a detail row."""
 
@@ -307,6 +310,7 @@ class TestParseComments:
         assert scrape.parse_comments(cell) is None
 
 
+@pytest.mark.db
 class TestParseDataRow:
     """parse_data_row extracts university, program, degree, status, url."""
 
@@ -358,6 +362,7 @@ class TestParseDataRow:
 #           TESTS FOR EXTRACT_PAGE_RESULTS
 # ======================================================================
 
+@pytest.mark.integration
 class TestExtractPageResults:
     """extract_page_results parses the driver's page source into records."""
 
@@ -434,6 +439,7 @@ def patch_wait_and_sleep(monkeypatch):
 #           TESTS FOR SCRAPE_GRADCAFE  (fully mocked)
 # ======================================================================
 
+@pytest.mark.integration
 class TestScrapeGradcafe:
     """
     Tests for the main scrape_gradcafe function.
@@ -594,6 +600,7 @@ class TestScrapeGradcafe:
 # ======================================================================
 
 # Lines 51-67: setup_driver()
+@pytest.mark.integration
 class TestSetupDriver:
     """setup_driver should configure Chrome options correctly."""
 
@@ -624,6 +631,7 @@ class TestSetupDriver:
 
 
 # Line 122: empty text in parse_detail_badges
+@pytest.mark.db
 class TestParseDetailBadgesEmptyText:
     """parse_detail_badges should skip empty badge text."""
 
@@ -643,6 +651,7 @@ class TestParseDetailBadgesEmptyText:
 
 
 # Lines 215-216: result_url / result_id set to None
+@pytest.mark.db
 class TestParseDataRowNoResultLink:
     """When no result link exists, fields should be None."""
 
@@ -666,6 +675,7 @@ class TestParseDataRowNoResultLink:
 
 
 # Lines 294-336: get_next_page_url()
+@pytest.mark.integration
 class TestGetNextPageUrl:
     """get_next_page_url should find the next page link."""
 
@@ -754,6 +764,7 @@ class TestGetNextPageUrl:
 
 
 # Lines 249-250: skip header rows (rows with no <td> cells)
+@pytest.mark.integration
 class TestExtractPageResultsHeaderRows:
     """extract_page_results should skip header rows without crashing."""
 
@@ -786,6 +797,7 @@ class TestExtractPageResultsHeaderRows:
         assert records[0]["university"] == "MIT"
 
 # Lines 368-370: polite delay
+@pytest.mark.integration
 class TestPoliteDelay:
     """The polite delay should be applied between pages (lines 368-370)."""
 
@@ -826,6 +838,7 @@ class TestPoliteDelay:
 
 
 # Lines 386-391: TimeoutException handling
+@pytest.mark.integration
 class TestTimeoutHandling:
     """When WebDriverWait times out, it should handle gracefully."""
 
@@ -909,6 +922,7 @@ class TestTimeoutHandling:
 
 
 # Lines 414-419: KeyboardInterrupt and generic Exception handling
+@pytest.mark.integration
 class TestScrapeGradcafeExceptions:
     """scrape_gradcafe should handle KeyboardInterrupt and Exception."""
 
@@ -979,6 +993,7 @@ class TestScrapeGradcafeExceptions:
 
 
 # Lines 249-250: scrape_gradcafe parameters
+@pytest.mark.integration
 class TestScrapeGradcafeParameters:
     """scrape_gradcafe should pass parameters correctly."""
 
@@ -1013,6 +1028,7 @@ class TestScrapeGradcafeParameters:
 
 
 # Lines 453-492: CLI entry point
+@pytest.mark.integration
 class TestCliEntryPoint:
     """The __main__ block CLI should parse args and call scrape_gradcafe."""
 

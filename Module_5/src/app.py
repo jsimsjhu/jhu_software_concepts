@@ -1,134 +1,103 @@
-# pylint: disable=trailing-newlines,trailing-whitespace,line-too-long,consider-using-with
 """
-Flask Web Application — Module 3 / Module 4, JHU Software Concepts
-===================================================================
-Connects to PostgreSQL, runs 10 analytical queries on the `applicants` table,
-displays results in a styled web page, and provides:
-  - "Pull Data" button triggers a background scrape of new GradCafe data
-  - "Update Analysis" button refreshes the displayed query results
+Flask application for GradCafe Applicant Data Analysis (Module 5).
 
-Thread-safe: uses a threading.Lock to prevent simultaneous scrape requests.
+Provides a web UI to scrape, load, and query applicant data from
+The GradCafe.  Uses a background thread for scraping and a thread
+lock to prevent concurrent data-pull operations.
 """
-# pylint: disable=no-member
 
-import threading
 import json
 import os
-import traceback
-from datetime import datetime
+import threading
+import time
 
 import psycopg
-from flask import Flask, render_template, jsonify
+from flask import Flask, jsonify, render_template, request
 
 try:
-    from .db_helpers import INSERT_APPLICANT_SQL, build_applicant_row
+    from .db_helpers import build_applicant_row, INSERT_APPLICANT_SQL
 except ImportError:
-    from db_helpers import INSERT_APPLICANT_SQL, build_applicant_row
+    from db_helpers import build_applicant_row, INSERT_APPLICANT_SQL
 
-try:
-    from . import scrape as scrape_module
-except ImportError:
-    import scrape as scrape_module
-
-SCRAPE_OUTPUT = "pulled_data.json"
+# ---------------------------------------------------------------------------
+# Default paths – can be overridden via create_app() test_config
+# ---------------------------------------------------------------------------
+SCRAPE_OUTPUT = "gradcafe_results.json"
 LLM_EXTEND_FILE = "llm_extend_applicant_data.json"
 
-
-def get_connection(app):
-    """Return a new psycopg connection using the configured DATABASE_URL."""
-    return psycopg.connect(app.config["DATABASE_URL"])
-
-
-def run_query(app, query):
-    """Execute query against applicants table and return all rows."""
-    if app.config.get("DATABASE_URL") is None:
-        raise RuntimeError("Database is not configured (TESTING mode).")
-    with get_connection(app) as conn:
-        with conn.cursor() as cur:
-            cur.execute(query)
-            rows = cur.fetchall()
-    return rows
+# ---------------------------------------------------------------------------
+# Global scrape state (protected by a threading.Lock)
+# ---------------------------------------------------------------------------
+scrape_state = {
+    "status": "idle",           # idle | running | completed | error
+    "message": "Ready to pull data.",
+    "records_added": 0,
+    "error": None,
+}
+_state_lock = threading.Lock()
 
 
-def get_existing_urls(app):
-    """Return a set of all existing result URLs in the database."""
-    conn = get_connection(app)
-    cur = conn.cursor()
-    try:
-        cur.execute("SELECT url FROM applicants WHERE url IS NOT NULL;")
-        return {row[0] for row in cur.fetchall()}
-    finally:
-        cur.close()
-        conn.close()
+def _reset_state():
+    """Set scrape_state back to its idle defaults."""
+    with _state_lock:
+        scrape_state["status"] = "idle"
+        scrape_state["message"] = "Ready to pull data."
+        scrape_state["records_added"] = 0
+        scrape_state["error"] = None
 
 
-def insert_new_rows(app, rows_to_insert):
-    """Insert new applicant rows using executemany, then commit."""
-    conn = get_connection(app)
-    cur = conn.cursor()
-    try:
-        cur.executemany(INSERT_APPLICANT_SQL, rows_to_insert)
-        conn.commit()
-    except (psycopg.Error, psycopg.OperationalError) as e:
-        conn.rollback()
-        raise RuntimeError(f"DB insert error during scrape: {e}") from e
-    finally:
-        cur.close()
-        conn.close()
+def _set_status(status, message, records_added=None, error=None):
+    """Update scrape_state under the lock."""
+    with _state_lock:
+        scrape_state["status"] = status
+        scrape_state["message"] = message
+        if records_added is not None:
+            scrape_state["records_added"] = records_added
+        if error is not None:
+            scrape_state["error"] = error
 
 
-def load_llm_lookup():
-    """Load LLM-extended fields file into a result_id lookup dict."""
-    llm_lookup = {}
-    if os.path.exists(LLM_EXTEND_FILE):
-        with open(LLM_EXTEND_FILE, "r", encoding="utf-8") as f:
-            llm_data = json.load(f)
-        for entry in llm_data.get("results", []):
-            rid = entry.get("result_id")
-            if rid:
-                llm_lookup[rid] = entry
-    return llm_lookup
+# ---------------------------------------------------------------------------
+# Database helpers
+# ---------------------------------------------------------------------------
+
+def get_connection():
+    """Create a fresh psycopg connection using the app's DATABASE_URL."""
+    from flask import current_app
+    url = current_app.config["DATABASE_URL"]
+    return psycopg.connect(url)
 
 
-def read_scraped_data():
-    """Read the freshly scraped JSON output file."""
-    with open(SCRAPE_OUTPUT, "r", encoding="utf-8") as f:
-        return json.load(f)
-
-
-def dedup_and_insert(app, new_records, llm_lookup):
-    """Deduplicate new_records against existing URLs, then insert."""
-    existing_urls = get_existing_urls(app)
-    rows_to_insert = []
-    for rec in new_records:
-        result_url = rec.get("result_url")
-        if result_url and result_url in existing_urls:
-            continue
-        if result_url:
-            existing_urls.add(result_url)
-        rows_to_insert.append(build_applicant_row(rec, llm_lookup))
-    if rows_to_insert:
-        insert_new_rows(app, rows_to_insert)
-    return len(rows_to_insert)
-
-
-# pylint: disable=duplicate-code
-def get_all_results(app):
+def get_all_results():
     """
-    Run all 10 queries and return a dict of labelled results.
-    Each value is either a scalar, a tuple, or a list of tuples.
+    Execute all 10 analytical queries against the applicants table.
+
+    Returns
+    -------
+    dict
+        Keys match what ``_results.html`` expects (q1_fall_2026_count, …).
     """
-    results = {}
-    q1 = "SELECT COUNT(*) FROM applicants WHERE term = 'Fall 2026';"
-    results["q1_fall_2026_count"] = run_query(app, q1)[0][0]
-    q2 = """
+    conn = get_connection()
+    cur = conn.cursor()
+
+    # Q1 – Fall 2026 entries
+    cur.execute("SELECT COUNT(*) FROM applicants WHERE term = 'Fall 2026';")
+    q1 = cur.fetchone()[0]
+
+    # Q2 – Percentage of international students
+    cur.execute(
+        """
         SELECT ROUND(
             (100.0 * COUNT(CASE WHEN us_or_international = 'International' THEN 1 END)
-             / COUNT(*))::numeric, 2
-        ) FROM applicants;
-    """
-    results["q2_pct_international"] = run_query(app, q2)[0][0]
-    q3 = """
+             / NULLIF(COUNT(*), 0))::numeric, 2
+        );
+        """
+    )
+    q2 = cur.fetchone()[0]
+
+    # Q3 – Average GPA, GRE, GRE V, GRE AW
+    cur.execute(
+        """
         SELECT
             ROUND(AVG(gpa)::numeric, 2),
             ROUND(AVG(gre)::numeric, 2),
@@ -137,36 +106,58 @@ def get_all_results(app):
         FROM applicants
         WHERE gpa IS NOT NULL OR gre IS NOT NULL
            OR gre_v IS NOT NULL OR gre_aw IS NOT NULL;
-    """
-    results["q3_avg_scores"] = run_query(app, q3)[0]
-    q4 = """
+        """
+    )
+    q3 = cur.fetchone()
+
+    # Q4 – Average GPA of American students in Fall 2026
+    cur.execute(
+        """
         SELECT ROUND(AVG(gpa)::numeric, 2)
         FROM applicants
         WHERE us_or_international = 'American' AND term = 'Fall 2026';
-    """
-    results["q4_avg_gpa_american_fall2026"] = run_query(app, q4)[0][0]
-    q5 = """
+        """
+    )
+    q4 = cur.fetchone()[0]
+
+    # Q5 – Percentage of acceptances for Fall 2026
+    cur.execute(
+        """
         SELECT ROUND(
             (100.0 * COUNT(CASE WHEN status = 'Accepted' THEN 1 END)
-             / COUNT(*))::numeric, 2
-        ) FROM applicants WHERE term = 'Fall 2026';
-    """
-    results["q5_pct_accepted_fall2026"] = run_query(app, q5)[0][0]
-    q6 = """
+             / NULLIF(COUNT(*), 0))::numeric, 2
+        )
+        FROM applicants
+        WHERE term = 'Fall 2026';
+        """
+    )
+    q5 = cur.fetchone()[0]
+
+    # Q6 – Average GPA of Fall 2026 acceptances
+    cur.execute(
+        """
         SELECT ROUND(AVG(gpa)::numeric, 2)
         FROM applicants
         WHERE term = 'Fall 2026' AND status = 'Accepted';
-    """
-    results["q6_avg_gpa_accepted_fall2026"] = run_query(app, q6)[0][0]
-    q7 = """
+        """
+    )
+    q6 = cur.fetchone()[0]
+
+    # Q7 – JHU Masters in CS
+    cur.execute(
+        """
         SELECT COUNT(*)
         FROM applicants
         WHERE llm_generated_university ILIKE '%Johns Hopkins%'
           AND degree = 'Masters'
           AND program ILIKE '%Computer Science%';
-    """
-    results["q7_jhu_masters_cs"] = run_query(app, q7)[0][0]
-    q8 = """
+        """
+    )
+    q7 = cur.fetchone()[0]
+
+    # Q8 – 2026 acceptances to Georgetown, MIT, Stanford, CMU for PhD in CS
+    cur.execute(
+        """
         SELECT COUNT(*)
         FROM applicants
         WHERE term = 'Fall 2026'
@@ -177,144 +168,304 @@ def get_all_results(app):
               'Stanford University', 'Carnegie Mellon University'
           )
           AND program ILIKE '%Computer Science%';
-    """
-    results["q8_top_phd_accepts"] = run_query(app, q8)[0][0]
-    q9 = """
+        """
+    )
+    q8 = cur.fetchone()[0]
+
+    # Q9 – International PhD applicants
+    cur.execute(
+        """
         SELECT COUNT(*)
         FROM applicants
         WHERE us_or_international = 'International' AND degree = 'PhD';
-    """
-    results["q9_intl_phd"] = run_query(app, q9)[0][0]
-    q10 = "SELECT term, COUNT(*) FROM applicants GROUP BY term ORDER BY term;"
-    results["q10_entries_per_term"] = run_query(app, q10)
-    return results
-# pylint: enable=duplicate-code
-
-
-def run_scraper(state):
-    """Run the Selenium scraper and update state."""
-    state["status"] = "running"
-    state["message"] = "Pulling data from GradCafe..."
-    state["started_at"] = datetime.now().isoformat()
-    scrape_module.scrape_gradcafe(
-        search_query="computer science",
-        max_pages=5,
-        output_file=SCRAPE_OUTPUT,
-        headless=True,
+        """
     )
+    q9 = cur.fetchone()[0]
+
+    # Q10 – Entries per term
+    cur.execute("SELECT term, COUNT(*) FROM applicants GROUP BY term ORDER BY term;")
+    q10 = cur.fetchall()
+
+    cur.close()
+    conn.close()
+
+    return {
+        "q1_fall_2026_count": q1,
+        "q2_pct_international": q2,
+        "q3_avg_scores": q3,
+        "q4_avg_gpa_american_fall2026": q4,
+        "q5_pct_accepted_fall2026": q5,
+        "q6_avg_gpa_accepted_fall2026": q6,
+        "q7_jhu_masters_cs": q7,
+        "q8_top_phd_accepts": q8,
+        "q9_intl_phd": q9,
+        "q10_entries_per_term": q10,
+    }
 
 
-# pylint: disable=too-many-locals, too-many-statements
+# ---------------------------------------------------------------------------
+# Background scraper (runs in a separate thread)
+# ---------------------------------------------------------------------------
+
+def background_scrape(app):
+    """
+    Read the scraped JSON file, insert new records into the database, and
+    update ``scrape_state`` on completion or error.
+
+    This function is designed to run inside a ``threading.Thread`` so that
+    the Flask request can return immediately.
+    """
+    _set_status("running", "Data pull in progress…", records_added=0)
+    records_added = 0
+    try:
+        # ---- 1. Load the scraped JSON ----
+        with open(SCRAPE_OUTPUT, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        results = data.get("results", [])
+        if not results:
+            _set_status("completed", "No new data found.", records_added=0)
+            return
+
+        # ---- 2. Load LLM extend data (if available) ----
+        llm_lookup = {}
+        try:
+            with open(LLM_EXTEND_FILE, "r", encoding="utf-8") as f:
+                llm_data = json.load(f)
+            for entry in llm_data.get("results", []):
+                rid = entry.get("result_id")
+                if rid:
+                    llm_lookup[rid] = entry
+        except (FileNotFoundError, json.JSONDecodeError):
+            llm_lookup = {}
+
+        # ---- 3. Connect to the database ----
+        conn = psycopg.connect(app.config["DATABASE_URL"])
+        cur = conn.cursor()
+
+        # ---- 4. Fetch existing result URLs to avoid duplicates ----
+        cur.execute("SELECT url FROM applicants WHERE url IS NOT NULL;")
+        existing_urls = {row[0] for row in cur.fetchall()}
+
+        # ---- 5. Insert only new records ----
+        for entry in results:
+            result_url = entry.get("result_url")
+            if result_url and result_url in existing_urls:
+                continue
+
+            row = build_applicant_row(entry, llm_lookup)
+            cur.execute(INSERT_APPLICANT_SQL, row)
+            records_added += 1
+
+            # Track the URL we just inserted so we don't re-insert it
+            if result_url:
+                existing_urls.add(result_url)
+
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        _set_status(
+            "completed",
+            f"Data pull completed. {records_added} new records added.",
+            records_added=records_added,
+        )
+
+    except Exception as exc:
+        _set_status(
+            "error",
+            f"Data pull failed: {exc}",
+            records_added=records_added,
+            error=str(exc),
+        )
+
+
+# ---------------------------------------------------------------------------
+# Application factory
+# ---------------------------------------------------------------------------
+
 def create_app(test_config=None):
-    """Flask application factory with routes for analysis and data pulling."""
+    """
+    Flask application factory.
+
+    Parameters
+    ----------
+    test_config : dict or None
+        If provided, used to override configuration for testing.
+
+    Returns
+    -------
+    Flask
+    """
     app = Flask(__name__)
-    app.secret_key = os.urandom(24).hex()
+
+    # ---- Default configuration ----
     app.config["DATABASE_URL"] = os.environ.get(
         "DATABASE_URL",
         "postgresql://postgres:postgres@localhost/postgres",
     )
-    app.config["TESTING"] = False
+    app.config["BUSY"] = False
+
+    # ---- Override with test_config if supplied ----
     if test_config is not None:
         app.config.update(test_config)
-    db_enabled = app.config.get("DATABASE_URL") is not None
-    scrape_lock = threading.Lock()
-    scrape_state = {
-        "status": "idle", "message": "",
-        "records_added": 0, "total_scraped": 0,
-        "started_at": None, "finished_at": None,
-    }
 
-    def handle_scrape_complete():
-        """Process scraped data and insert new records into the database."""
-        payload = read_scraped_data()
-        new_records = payload.get("results", [])
-        total = len(new_records)
-        scrape_state["total_scraped"] = total
-        llm_lookup = load_llm_lookup()
-        inserted = dedup_and_insert(app, new_records, llm_lookup)
-        scrape_state["records_added"] = inserted
-        scrape_state["status"] = "completed"
-        scrape_state["message"] = (
-            f"Scraped {total} record(s); "
-            f"appended {inserted} new record(s) to database."
-        )
+    # ---- Reset scrape state on startup ----
+    _reset_state()
+
+    # ==================================================================
+    #                             ROUTES
+    # ==================================================================
 
     @app.route("/")
-    @app.route("/analysis")
     def index():
-        """Main page: render template with query results and scrape state."""
-        try:
-            results = get_all_results(app)
-            db_ok, db_error = True, None
-        except RuntimeError as e:
-            results, db_ok, db_error = {}, False, str(e)
+        """
+        Render the main dashboard page.
+
+        If the database is disabled (DATABASE_URL is None) or queries
+        raise an error, the template is rendered with ``db_ok=False``
+        and an error description.
+        """
+        db_ok = True
+        db_error = None
+        results = None
+
+        if app.config.get("DATABASE_URL") is None:
+            db_ok = False
+            db_error = "Database is not configured."
+        else:
+            try:
+                results = get_all_results()
+            except Exception as exc:
+                db_ok = False
+                db_error = str(exc)
+
         return render_template(
-            "index.html", results=results, db_ok=db_ok,
-            db_error=db_error, scrape_state=scrape_state,
+            "index.html",
+            results=results,
+            db_ok=db_ok,
+            db_error=db_error,
+            scrape_state=scrape_state,
         )
+
+    # ------------------------------------------------------------------
+    # /pull-data  (hyphen)
+    # ------------------------------------------------------------------
+
+    @app.route("/pull-data", methods=["POST"])
+    def pull_data_hyphen():
+        return _pull_data()
+
+    # ------------------------------------------------------------------
+    # /pull_data  (underscore)
+    # ------------------------------------------------------------------
 
     @app.route("/pull_data", methods=["POST"])
-    @app.route("/pull-data", methods=["POST"])
-    def pull_data():
-        """Start a background scrape if one is not already running."""
+    def pull_data_underscore():
+        return _pull_data()
+
+    # ------------------------------------------------------------------
+
+    def _pull_data():
+        """
+        Start a background data-pull (scrape + insert).
+
+        Returns 409 Conflict if a pull is already in progress.
+        """
         if app.config.get("BUSY"):
-            return jsonify({"success": False,
-                            "message": "A data pull is already in progress."}), 409
-        if not db_enabled:
-            return jsonify({"success": False,
-                            "message": "Database is not available."})
-        if not scrape_lock.acquire(blocking=False):
-            return jsonify({"success": False,
-                            "message": "A data pull is already in progress."}), 409
-        scrape_state.update(
-            status="starting", message="Starting data pull...",
-            records_added=0, total_scraped=0,
-            started_at=None, finished_at=None,
-        )
+            return jsonify({
+                "success": False,
+                "message": "A data pull is already in progress.",
+            }), 409
 
-        def bg_work():
-            try:
-                run_scraper(scrape_state)
-                handle_scrape_complete()
-            except (json.JSONDecodeError, KeyError, OSError) as e:
-                scrape_state["status"] = "error"
-                scrape_state["message"] = f"Scrape failed: {e}"
-                traceback.print_exc()
-            finally:
-                scrape_state["finished_at"] = datetime.now().isoformat()
-                scrape_lock.release()
+        if app.config.get("DATABASE_URL") is None:
+            return jsonify({
+                "success": False,
+                "message": "Database is not available.",
+            })
 
-        threading.Thread(target=bg_work, daemon=True).start()
-        return jsonify({"success": True,
-                        "message": "Data pull started. This may take a few minutes."})
+        _reset_state()
+
+        thread = threading.Thread(target=background_scrape, args=(app,), daemon=True)
+        thread.start()
+
+        return jsonify({
+            "success": True,
+            "message": "Data pull started.",
+        })
+
+    # ------------------------------------------------------------------
+    # /update-analysis  (hyphen)
+    # ------------------------------------------------------------------
+
+    @app.route("/update-analysis", methods=["POST"])
+    def update_analysis_hyphen():
+        return _update_analysis()
+
+    # ------------------------------------------------------------------
+    # /update_analysis  (underscore)
+    # ------------------------------------------------------------------
 
     @app.route("/update_analysis", methods=["POST"])
-    @app.route("/update-analysis", methods=["POST"])
-    def update_analysis():
-        """Re-run all queries and return fresh results."""
-        if app.config.get("BUSY") or scrape_state["status"] == "running":
-            return jsonify({"success": False,
-                            "message": "A data pull is in progress.",
-                            "scraping": True}), 409
-        try:
-            results = get_all_results(app)
-            html = render_template("_results.html", results=results)
-            return jsonify({"success": True, "html": html,
-                            "message": "Analysis updated successfully."})
-        except RuntimeError as e:
-            return jsonify({"success": False,
-                            "message": f"Failed to update analysis: {e}"})
+    def update_analysis_underscore():
+        return _update_analysis()
 
-    @app.route("/scrape_status", methods=["GET"])
+    # ------------------------------------------------------------------
+
+    def _update_analysis():
+        """
+        Re-run all queries and return rendered HTML.
+
+        Returns 409 Conflict if a data pull is in progress.
+        """
+        if app.config.get("BUSY"):
+            return jsonify({
+                "success": False,
+                "message": "A data pull is in progress.",
+            }), 409
+
+        if app.config.get("DATABASE_URL") is None:
+            return jsonify({
+                "success": False,
+                "message": "Failed to update analysis.",
+            })
+
+        try:
+            results = get_all_results()
+            html = render_template("_results.html", results=results)
+            return jsonify({
+                "success": True,
+                "html": html,
+                "message": "Analysis updated successfully.",
+            })
+        except RuntimeError:
+            return jsonify({
+                "success": False,
+                "message": "Failed to update analysis.",
+            })
+
+    # ------------------------------------------------------------------
+    # /scrape_status
+    # ------------------------------------------------------------------
+
+    @app.route("/scrape_status")
     def scrape_status():
-        """Return the current scrape state as JSON (for polling)."""
-        return jsonify(scrape_state)
+        """Return the current background-scrape state as JSON."""
+        with _state_lock:
+            return jsonify({
+                "status": scrape_state["status"],
+                "message": scrape_state["message"],
+                "records_added": scrape_state["records_added"],
+            })
 
     return app
 
+
+# ---------------------------------------------------------------------------
+# CLI entry point
+# ---------------------------------------------------------------------------
 
 if __name__ == "__main__":  # pragma: no cover
     application = create_app()
     print("Starting Flask app on http://127.0.0.1:5000")
     application.run(debug=True, threaded=True)
-    

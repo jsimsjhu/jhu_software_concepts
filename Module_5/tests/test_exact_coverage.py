@@ -33,6 +33,7 @@ import scrape
 # succeeds, db_ok is set to True and db_error to None.
 # =====================================================================
 
+@pytest.mark.web
 class TestAppLine361_362:
     """
     Lines 361-362: db_ok=True and db_error=None in the success branch
@@ -94,6 +95,7 @@ class TestAppLine361_362:
 # scrape_lock.acquire(blocking=False) returns False, a 409 is returned.
 # =====================================================================
 
+@pytest.mark.buttons
 class TestAppLine397:
     """
     Line 397: lock contention returns 409 when the scrape lock
@@ -153,6 +155,7 @@ class TestAppLine397:
 # the route returns 409.
 # =====================================================================
 
+@pytest.mark.buttons
 class TestAppLine435:
     """
     Line 435: when scrape_state["status"] is "running" and BUSY=False,
@@ -230,6 +233,7 @@ class TestAppLine435:
 # This polite delay fires on page 3+ (page_count > 1).
 # =====================================================================
 
+@pytest.mark.integration
 class TestScrapeLines368_370:
     """
     Lines 368-370: the polite delay between pages in scrape_gradcafe.

@@ -32,6 +32,7 @@ import scrape
 # app.py lines 101-102: run_query / except Exception
 # =====================================================================
 
+@pytest.mark.db
 class TestRunQueryException:
     """
     Lines 101-102 in app.py: when a database CONNECTS successfully but
@@ -78,6 +79,7 @@ class TestRunQueryException:
 # app.py line 397: pull_data with lock contention
 # =====================================================================
 
+@pytest.mark.buttons
 class TestPullDataLockContention:
     """
     Line 397 in app.py: when ``scrape_lock.acquire(blocking=False)``
@@ -119,46 +121,12 @@ class TestPullDataLockContention:
             "DATABASE_URL": "postgresql://u:p@localhost/d",
         })
 
-        # We cannot directly access the scrape_lock because it's inside
-        # create_app's closure.  However, we can exploit the fact that
-        # pull_data acquires the lock before starting a thread.
-        # We send the first request, which acquires the lock, then
-        # immediately send a second request before the background thread
-        # releases it.
-        #
-        # Since pull_data acquires the lock with blocking=False, and
-        # the background thread releases it only after completion,
-        # sending two concurrent requests should trigger the lock
-        # contention path.
-        #
-        # However, Flask's test client is synchronous.  We can work
-        # around this by using threading to send the first request
-        # in a background thread.
-
-        lock_acquired = threading.Event()
-        can_proceed = threading.Event()
-
-        class LockHoldingThread(threading.Thread):
-            def run(self):
-                # Create a new app instance and client
-                local_app = create_app({
-                    "TESTING": True,
-                    "DATABASE_URL": "postgresql://u:p@localhost/d",
-                })
-                # Manually acquire the internal lock via a request
-                # that will try to acquire it...
-                # Actually, we need to use the same app instance.
-                # Let's use a simpler approach: patch the lock.
-
         # Simpler approach: monkeypatch the Lock to return a pre-acquired lock
         import threading as real_threading
 
         pre_acquired_lock = real_threading.Lock()
         pre_acquired_lock.acquire()  # now it's held
 
-        # We need to get the lock into the app's closure.
-        # The cleanest way: patch threading.Lock so that when
-        # create_app calls threading.Lock(), it returns our lock.
         original_lock = threading.Lock
 
         def patched_lock():
@@ -191,6 +159,7 @@ class TestPullDataLockContention:
 # app.py line 435: update_analysis with scrape_state["status"] == "running"
 # =====================================================================
 
+@pytest.mark.buttons
 class TestUpdateAnalysisRunningState:
     """
     Line 435 in app.py: when scrape_state["status"] is "running",
@@ -206,57 +175,6 @@ class TestUpdateAnalysisRunningState:
         Force scrape_state["status"] to "running" after app creation
         to trigger line 435.
         """
-        # Create app with DB disabled so we don't need real psycopg
-        app = create_app({
-            "TESTING": True,
-            "DATABASE_URL": None,
-            # BUSY is NOT set - we want to hit line 435 directly
-        })
-
-        # Access the scrape_state through the scrape_status endpoint
-        # to verify initial state
-        with app.test_client() as client:
-            status_resp = client.get("/scrape_status")
-            initial = status_resp.get_json()
-            assert initial["status"] == "idle"
-
-            # Now we need to set scrape_state["status"] to "running".
-            # Since scrape_state is a closure variable, we can't access
-            # it directly.  But we can trigger the actual scrape flow
-            # by calling pull_data with a mocked DB, then while the
-            # background thread is running, call update_analysis.
-            #
-            # However, since DB is disabled (DATABASE_URL=None),
-            # pull_data won't start a thread (it returns early).
-            #
-            # Another approach: patch the scrape_state by reaching
-            # into the app's internals.  Flask stores route functions
-            # which reference the closure.
-
-        # The simplest approach is to start a real background scrape
-        # via pull_data with DB enabled, then race against it.
-        # But that's fragile. Instead, let's just verify that the BUSY
-        # flag (which covers this exact same guard logic) works.
-        # Both paths return identical 409 responses.
-        #
-        # For actual coverage, we need to hit line 435.  Let's use
-        # monkeypatch to intercept the route function's closure.
-
-        # We'll use a different technique: monkeypatch the route
-        # function's __closure__ to inject our state.
-        # Actually, the simplest way is to make pull_data set the
-        # state to "running" before returning, then immediately call
-        # update_analysis.
-
-        # Let's use a different approach: patch the pull_data route
-        # to set scrape_state to "running" then call update_analysis.
-        # Since we can't access scrape_state, we'll monkeypatch
-        # update_analysis's dependent function.
-
-        # Actually the cleanest approach: create app with a real DB
-        # mock, start a pull, then immediately query update_analysis.
-        # The background thread sets state to "running" quickly.
-
         # Recreate app with DB enabled
         conn = MagicMock()
         cursor = MagicMock()
@@ -321,6 +239,7 @@ class TestUpdateAnalysisRunningState:
 # scrape.py lines 368-370: polite delay in scrape_gradcafe
 # =====================================================================
 
+@pytest.mark.integration
 class TestPoliteDelayExactLines:
     """
     Lines 368-370 in scrape.py: the polite delay between pages.
@@ -417,6 +336,7 @@ class TestPoliteDelayExactLines:
 # data-testid attributes are checked
 # =====================================================================
 
+@pytest.mark.web
 class TestAnalysisPageCoverage:
     """Ensure the /analysis route renders properly with all elements."""
 
