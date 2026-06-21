@@ -14,7 +14,7 @@ import psycopg
 from flask import Flask, jsonify, render_template, current_app
 
 try:
-    from .db_helpers import build_applicant_row, INSERT_APPLICANT_SQL
+    from db_helpers import build_applicant_row, INSERT_APPLICANT_SQL
 except ImportError:
     from db_helpers import build_applicant_row, INSERT_APPLICANT_SQL
 
