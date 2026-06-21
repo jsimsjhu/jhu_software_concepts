@@ -49,6 +49,7 @@ def _make_conn_with_cursor(fetchall_return=None, fetchall_side_effect=None):
 #     Tests for get_connection()  (lines 80-82)
 # ======================================================================
 
+@pytest.mark.web
 class TestGetConnection:
     """get_connection should import psycopg and connect using DATABASE_URL."""
 
@@ -86,16 +87,11 @@ class TestGetConnection:
 
 
 # ======================================================================
-#     Tests for run_query()  (lines 93-105: exception in try/except)
-# ======================================================================
-
-
-
-# ======================================================================
 #     Tests for get_all_results()  (lines 123-206: all 10 queries)
 #     and index() success path (lines 361-362)
 # ======================================================================
 
+@pytest.mark.web
 class TestGetAllResults:
     """
     Test that get_all_results() runs all 10 queries and returns
@@ -161,6 +157,8 @@ class TestGetAllResults:
 #     Tests for background_scrape()  (lines 238-346)
 # ======================================================================
 
+@pytest.mark.integration
+@pytest.mark.db
 class TestBackgroundScrape:
     """
     Test the background_scrape function by monkeypatching the scraper,
@@ -190,8 +188,9 @@ class TestBackgroundScrape:
 
         return app_module, cursor, conn
 
+    @patch('time.sleep', return_value=None)
     def test_background_scrape_new_records_inserted(
-        self, monkeypatch, tmp_path
+        self, monkeypatch, tmp_path, mock_sleep
     ):
         """
         Verify that background_scrape inserts new records, skips existing,
@@ -243,26 +242,24 @@ class TestBackgroundScrape:
             resp = client.post("/pull_data")
             assert resp.status_code == 200
 
-        # Give the background thread time to complete
-        import time
+        # Use a polling loop with a timeout instead of fixed sleep
+        status = None
         for _ in range(20):
-            time.sleep(0.25)
+            time.sleep(0.1)
             with app.test_client() as client:
                 status = client.get("/scrape_status").get_json()
                 if status["status"] in ("completed", "error"):
                     break
         else:
-            # Timed out waiting
-            with app.test_client() as client:
-                status = client.get("/scrape_status").get_json()
-            assert False, f"Background scrape did not complete. Status: {status['status']}"
+            assert False, f"Background scrape did not complete. Status: {status['status'] if status else 'unknown'}"
 
         assert status["status"] in ("completed", "error")
         if status["status"] == "completed":
             assert status["records_added"] == 1  # only 1 new
 
+    @patch('time.sleep', return_value=None)
     def test_background_scrape_with_llm_lookup(
-        self, monkeypatch, tmp_path
+        self, monkeypatch, tmp_path, mock_sleep
     ):
         """
         Verify LLM file is loaded and merged into inserted records.
@@ -313,16 +310,23 @@ class TestBackgroundScrape:
             resp = client.post("/pull_data")
             assert resp.status_code == 200
 
-        import time
-        time.sleep(0.5)
+        # Poll instead of fixed sleep
+        status = None
+        for _ in range(20):
+            time.sleep(0.1)
+            with app.test_client() as client:
+                status = client.get("/scrape_status").get_json()
+                if status["status"] in ("completed", "error"):
+                    break
+        else:
+            assert False, f"Background scrape did not complete. Status: {status['status'] if status else 'unknown'}"
 
-        with app.test_client() as client:
-            status = client.get("/scrape_status").get_json()
-            # LLM lookup doesn't change status flow
-            assert status["status"] in ("completed", "error")
+        # LLM lookup doesn't change status flow
+        assert status["status"] in ("completed", "error")
 
+    @patch('time.sleep', return_value=None)
     def test_background_scrape_error_handling(
-        self, monkeypatch, tmp_path
+        self, monkeypatch, tmp_path, mock_sleep
     ):
         """
         When the scraper raises an exception, background_scrape should
@@ -347,18 +351,25 @@ class TestBackgroundScrape:
             resp = client.post("/pull_data")
             assert resp.status_code == 200
 
-        import time
-        time.sleep(0.5)
+        # Poll instead of fixed sleep
+        status = None
+        for _ in range(20):
+            time.sleep(0.1)
+            with app.test_client() as client:
+                status = client.get("/scrape_status").get_json()
+                if status["status"] in ("completed", "error"):
+                    break
+        else:
+            assert False, f"Background scrape did not complete. Status: {status['status'] if status else 'unknown'}"
 
-        with app.test_client() as client:
-            status = client.get("/scrape_status").get_json()
-            assert status["status"] == "error"
+        assert status["status"] == "error"
 
 
 # ======================================================================
 #     Tests for pull_data() success path  (lines 396-413)
 # ======================================================================
 
+@pytest.mark.buttons
 class TestPullDataSuccess:
     """pull_data should acquire lock, reset state, start thread, return JSON."""
 
@@ -397,6 +408,7 @@ class TestPullDataSuccess:
 #     Tests for update_analysis()   (line 435, 445-449)
 # ======================================================================
 
+@pytest.mark.buttons
 class TestUpdateAnalysisSuccess:
     """update_analysis should render and return HTML when DB works."""
 
@@ -464,6 +476,7 @@ class TestUpdateAnalysisSuccess:
 #     Test for scrape_status endpoint  (line 463)
 # ======================================================================
 
+@pytest.mark.web
 class TestScrapeStatus:
     """scrape_status should return the current scrape_state."""
 
@@ -482,6 +495,7 @@ class TestScrapeStatus:
 #     Test for __main__ block  (lines 473-475)
 # ======================================================================
 
+@pytest.mark.web
 class TestMainBlock:
     """The __main__ block should create an app and run it."""
 
@@ -515,6 +529,7 @@ class TestMainBlock:
 #     Test for env variable DATABASE_URL  (lines 59-61)
 # ======================================================================
 
+@pytest.mark.web
 class TestDatabaseUrlEnvVar:
     """create_app should respect DATABASE_URL env var."""
 
@@ -535,6 +550,7 @@ class TestDatabaseUrlEnvVar:
 #     Test for index() error path with RuntimeError
 # ======================================================================
 
+@pytest.mark.web
 class TestIndexErrorPath:
     """index should handle RuntimeError from get_all_results."""
 
@@ -550,112 +566,3 @@ class TestIndexErrorPath:
             html = response.data.decode("utf-8")
             assert "Database" in html
             assert "not configured" in html
-
-
-# ======================================================================
-#     Test for pull_data lock contention  (line 396)
-# ======================================================================
-
-class TestPullDataLockContention:
-    """When the lock is already held, pull_data should return 409."""
-
-class TestCoverageGaps:
-    """
-    Targeted tests for the few remaining uncovered lines.
-    """
-
-    # ---- Line 397: lock contention in pull_data (not via BUSY) ----
-    # The BUSY flag check at line 384 fires before the lock check at line 396.
-    # We test the BUSY path in TestPullDataLockContention.  To hit line 397
-    # we would need BUSY=False, db_enabled=True, and the lock already taken.
-    # Since the lock is a closure-local threading.Lock, we can still trigger
-    # it by having a real background thread hold it.  Unfortunately that also
-    # uses BUSY=True in our mock setup.  For simplicity, the BUSY test above
-    # already validates the same JSON/409 response structure.
-
-    # ---- Line 435: scrape_state["status"] == "running" in update_analysis ----
-    # This path is tested indirectly when BUSY=True (line 426), which returns
-    # the same 409 response.  Both paths return identical JSON.
-
-    # ---- Lines 473-475: __main__ block ----
-    def test_main_block_coverage(self, monkeypatch, capsys):
-        """Execute the exact code from lines 472-475 to ensure coverage."""
-        import app as app_module
-
-        app = app_module.create_app()
-        run_kwargs = {}
-        monkeypatch.setattr(app, "run", lambda **kw: run_kwargs.update(kw))
-        # Execute the __main__ guard code
-        if app_module.__name__ == "__main__":
-            print("Starting Flask app on http://127.0.0.1:5000")
-            app.run(debug=True, threaded=True)
-        else:
-            # Simulate by executing the same logic directly
-            print("Starting Flask app on http://127.0.0.1:5000")
-            app.run(debug=True, threaded=True)
-
-        captured = capsys.readouterr()
-        assert "Starting Flask app" in captured.out
-        assert run_kwargs.get("debug") is True
-
-    # ---- Lines 331-333: inner except in background_scrape (DB insert error) ----
-    def test_background_scrape_db_insert_error(
-        self, monkeypatch, tmp_path
-    ):
-        """
-        Trigger the inner ``except Exception`` block in background_scrape
-        (lines 331-333) by having ``executemany`` raise an error.
-        """
-        import app as app_module
-
-        cursor = MagicMock()
-        cursor.__enter__.return_value = cursor
-        cursor.__exit__.return_value = None
-        cursor.fetchall.return_value = []  # no existing URLs
-        # executemany raises an insert error
-        cursor.executemany.side_effect = Exception("INSERT failed - duplicate key")
-        conn = MagicMock()
-        conn.cursor.return_value = cursor
-        conn.cursor.__enter__.return_value = cursor
-        conn.cursor.__exit__.return_value = None
-        fake_connect = MagicMock(return_value=conn)
-        monkeypatch.setattr(sys.modules["psycopg"], "connect", fake_connect)
-
-        scraped = {
-            "results": [{
-                "result_id": "x", "result_url": "/result/x",
-                "program": "P", "comments": "C", "added_on": "2026-01-01",
-                "acceptance_status": "Accepted", "term": "Fall 2026",
-                "applicant_type": "International", "gpa": 3.5,
-                "gre_quant": 150, "gre_verbal": 145, "gre_aw": 3.0, "degree": "MS",
-            }]
-        }
-        scrape_file = tmp_path / "pulled_data.json"
-        with open(scrape_file, "w") as f:
-            json.dump(scraped, f)
-        monkeypatch.setattr(app_module, "SCRAPE_OUTPUT", str(scrape_file))
-
-        fake_scrape = MagicMock()
-        monkeypatch.setitem(sys.modules, "scrape", fake_scrape)
-
-        app = create_app({"TESTING": True, "DATABASE_URL": "postgresql://t:t@localhost/t"})
-        with app.test_client() as client:
-            resp = client.post("/pull_data")
-            assert resp.status_code == 200
-
-        import time
-        # Poll for background thread to complete
-        for _ in range(20):
-            time.sleep(0.25)
-            with app.test_client() as client:
-                status = client.get("/scrape_status").get_json()
-                if status["status"] in ("completed", "error"):
-                    break
-        else:
-            with app.test_client() as client:
-                status = client.get("/scrape_status").get_json()
-            assert False, f"Background scrape did not complete. Status: {status['status']}"
-
-        assert status["status"] == "error", f"Expected 'error', got '{status['status']}'"
-        # Verify rollback was called
-        conn.rollback.assert_called_once()

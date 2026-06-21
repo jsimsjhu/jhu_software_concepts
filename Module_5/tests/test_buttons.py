@@ -36,6 +36,7 @@ def busy_client():
 # 1. POST /pull-data returns 200 when not busy
 # ------------------------------------------------------------------
 
+@pytest.mark.buttons
 def test_pull_data_returns_200_when_not_busy(client):
     """
     When no pull is in progress and the database is disabled,
@@ -56,6 +57,7 @@ def test_pull_data_returns_200_when_not_busy(client):
 # 2. POST /update-analysis returns 200 when not busy
 # ------------------------------------------------------------------
 
+@pytest.mark.buttons
 def test_update_analysis_returns_200_when_not_busy(client):
     """
     When no pull is happening, the update-analysis endpoint should
@@ -74,6 +76,7 @@ def test_update_analysis_returns_200_when_not_busy(client):
 # 3. POST /update-analysis returns 409 when busy
 # ------------------------------------------------------------------
 
+@pytest.mark.buttons
 def test_update_analysis_returns_409_when_busy(busy_client):
     """
     When a data pull is in progress (simulated via BUSY=True),
@@ -91,6 +94,7 @@ def test_update_analysis_returns_409_when_busy(busy_client):
 # 4. POST /pull-data returns 409 when busy
 # ------------------------------------------------------------------
 
+@pytest.mark.buttons
 def test_pull_data_returns_409_when_busy(busy_client):
     """
     When a data pull is already in progress (simulated via BUSY=True),
