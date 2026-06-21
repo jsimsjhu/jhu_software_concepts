@@ -338,39 +338,36 @@ class TestBackgroundScrape:
         background_scrape should capture it, set state to 'error',
         and release the lock. (Covers lines 338-346.)
 
-        We monkeypatch json.load to raise RuntimeError so it hits the
-        except (psycopg.Error, RuntimeError) block in background_scrape.
+        Provide scraped data with actual results so it gets past the
+        empty-results gate, then make psycopg.connect raise RuntimeError
+        to trigger the except (psycopg.Error, RuntimeError) block.
         """
         monkeypatch.setattr(time, "sleep", lambda x: None)
         import app as app_module
-        import json as json_module
 
-        conn = _make_conn_with_cursor()
-        fake_connect = MagicMock(return_value=conn)
-        monkeypatch.setattr(sys.modules["psycopg"], "connect", fake_connect)
+        # Make psycopg.connect raise RuntimeError inside the background
+        # thread so it's caught by the except block at line 272.
+        def failing_connect(*args, **kwargs):
+            raise RuntimeError("Simulated DB connection failure")
+        monkeypatch.setattr(sys.modules["psycopg"], "connect", failing_connect)
 
-        # Create a valid scrape file so it opens successfully, then make
-        # json.load raise RuntimeError to trigger the caught error path
+        # Create a valid scrape file with results (so we pass the
+        # empty-results check at line 224-226)
+        scraped = {
+            "results": [{
+                "result_id": "r001", "result_url": "/result/r001",
+                "program": "CS", "comments": "T", "added_on": "2026-08-01",
+                "acceptance_status": "Accepted", "term": "Fall 2026",
+                "applicant_type": "International", "gpa": 3.7,
+                "gre_quant": 160, "gre_verbal": 155, "gre_aw": 3.5, "degree": "PhD",
+            }]
+        }
         scrape_file = tmp_path / "pulled_data.json"
         with open(scrape_file, "w") as f:
-            json.dump({"results": []}, f)
+            json.dump(scraped, f)
         monkeypatch.setattr(app_module, "SCRAPE_OUTPUT", str(scrape_file))
 
-        # Monkeypatch json.load to raise RuntimeError (caught by app.py)
-        original_load = json_module.load
-        call_count = [0]
-        def failing_load(*args, **kwargs):
-            call_count[0] += 1
-            if call_count[0] > 1:  # first call is for test setup
-                raise RuntimeError("Simulated scrape failure")
-            return original_load(*args, **kwargs)
-        monkeypatch.setattr(json_module, "load", failing_load)
-
-        # Scrape module mock
-        fake_scrape = MagicMock()
-        monkeypatch.setitem(sys.modules, "scrape", fake_scrape)
-
-        app = create_app({"TESTING": True, "DATABASE_URL": "postgresql://t:t@localhost/t"})
+        app = create_app({"TESTING": True, "DATABASE_URL": "postgresql://user:pass@localhost/db"})
         with app.test_client() as client:
             resp = client.post("/pull_data")
             assert resp.status_code == 200
@@ -379,8 +376,8 @@ class TestBackgroundScrape:
         status = self._poll_status(app)
 
         assert status["status"] == "error"
-        assert "scrape" in status.get("error", "").lower() or \
-               "simulated" in status.get("error", "").lower()
+        assert "failure" in status.get("error", "").lower() or \
+               "connection" in status.get("error", "").lower()
 
 
 # ======================================================================
