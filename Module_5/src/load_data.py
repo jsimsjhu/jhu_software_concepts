@@ -5,7 +5,7 @@
 import json
 import psycopg
 
-from .db_helpers import (
+from db_helpers import (
     INSERT_APPLICANT_SQL,
     build_applicant_row,
     DB_NAME,
