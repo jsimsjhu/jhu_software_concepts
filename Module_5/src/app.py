@@ -9,10 +9,9 @@ lock to prevent concurrent data-pull operations.
 import json
 import os
 import threading
-import time
 
 import psycopg
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, jsonify, render_template, current_app
 
 try:
     from .db_helpers import build_applicant_row, INSERT_APPLICANT_SQL
@@ -63,7 +62,6 @@ def _set_status(status, message, records_added=None, error=None):
 
 def get_connection():
     """Create a fresh psycopg connection using the app's DATABASE_URL."""
-    from flask import current_app
     url = current_app.config["DATABASE_URL"]
     return psycopg.connect(url)
 
@@ -78,14 +76,14 @@ def get_all_results():
         Keys match what ``_results.html`` expects (q1_fall_2026_count, …).
     """
     conn = get_connection()
-    cur = conn.cursor()
+    cur = conn.cursor()  # pylint: disable=no-member
 
     # Q1 – Fall 2026 entries
-    cur.execute("SELECT COUNT(*) FROM applicants WHERE term = 'Fall 2026';")
+    cur.execute("SELECT COUNT(*) FROM applicants WHERE term = 'Fall 2026';")  # pylint: disable=no-member
     q1 = cur.fetchone()[0]
 
     # Q2 – Percentage of international students
-    cur.execute(
+    cur.execute(  # pylint: disable=no-member
         """
         SELECT ROUND(
             (100.0 * COUNT(CASE WHEN us_or_international = 'International' THEN 1 END)
@@ -96,7 +94,7 @@ def get_all_results():
     q2 = cur.fetchone()[0]
 
     # Q3 – Average GPA, GRE, GRE V, GRE AW
-    cur.execute(
+    cur.execute(  # pylint: disable=no-member
         """
         SELECT
             ROUND(AVG(gpa)::numeric, 2),
@@ -111,7 +109,7 @@ def get_all_results():
     q3 = cur.fetchone()
 
     # Q4 – Average GPA of American students in Fall 2026
-    cur.execute(
+    cur.execute(  # pylint: disable=no-member
         """
         SELECT ROUND(AVG(gpa)::numeric, 2)
         FROM applicants
@@ -121,7 +119,7 @@ def get_all_results():
     q4 = cur.fetchone()[0]
 
     # Q5 – Percentage of acceptances for Fall 2026
-    cur.execute(
+    cur.execute(  # pylint: disable=no-member
         """
         SELECT ROUND(
             (100.0 * COUNT(CASE WHEN status = 'Accepted' THEN 1 END)
@@ -134,7 +132,7 @@ def get_all_results():
     q5 = cur.fetchone()[0]
 
     # Q6 – Average GPA of Fall 2026 acceptances
-    cur.execute(
+    cur.execute(  # pylint: disable=no-member
         """
         SELECT ROUND(AVG(gpa)::numeric, 2)
         FROM applicants
@@ -144,7 +142,7 @@ def get_all_results():
     q6 = cur.fetchone()[0]
 
     # Q7 – JHU Masters in CS
-    cur.execute(
+    cur.execute(  # pylint: disable=no-member
         """
         SELECT COUNT(*)
         FROM applicants
@@ -156,7 +154,7 @@ def get_all_results():
     q7 = cur.fetchone()[0]
 
     # Q8 – 2026 acceptances to Georgetown, MIT, Stanford, CMU for PhD in CS
-    cur.execute(
+    cur.execute(  # pylint: disable=no-member
         """
         SELECT COUNT(*)
         FROM applicants
@@ -173,7 +171,7 @@ def get_all_results():
     q8 = cur.fetchone()[0]
 
     # Q9 – International PhD applicants
-    cur.execute(
+    cur.execute(  # pylint: disable=no-member
         """
         SELECT COUNT(*)
         FROM applicants
@@ -183,11 +181,11 @@ def get_all_results():
     q9 = cur.fetchone()[0]
 
     # Q10 – Entries per term
-    cur.execute("SELECT term, COUNT(*) FROM applicants GROUP BY term ORDER BY term;")
+    cur.execute("SELECT term, COUNT(*) FROM applicants GROUP BY term ORDER BY term;")  # pylint: disable=no-member
     q10 = cur.fetchall()
 
-    cur.close()
-    conn.close()
+    cur.close()  # pylint: disable=no-member
+    conn.close()  # pylint: disable=no-member
 
     return {
         "q1_fall_2026_count": q1,
@@ -241,10 +239,10 @@ def background_scrape(app):
 
         # ---- 3. Connect to the database ----
         conn = psycopg.connect(app.config["DATABASE_URL"])
-        cur = conn.cursor()
+        cur = conn.cursor()  # pylint: disable=no-member
 
         # ---- 4. Fetch existing result URLs to avoid duplicates ----
-        cur.execute("SELECT url FROM applicants WHERE url IS NOT NULL;")
+        cur.execute("SELECT url FROM applicants WHERE url IS NOT NULL;")  # pylint: disable=no-member
         existing_urls = {row[0] for row in cur.fetchall()}
 
         # ---- 5. Insert only new records ----
@@ -254,16 +252,16 @@ def background_scrape(app):
                 continue
 
             row = build_applicant_row(entry, llm_lookup)
-            cur.execute(INSERT_APPLICANT_SQL, row)
+            cur.execute(INSERT_APPLICANT_SQL, row)  # pylint: disable=no-member
             records_added += 1
 
             # Track the URL we just inserted so we don't re-insert it
             if result_url:
                 existing_urls.add(result_url)
 
-        conn.commit()
-        cur.close()
-        conn.close()
+        conn.commit()  # pylint: disable=no-member
+        cur.close()  # pylint: disable=no-member
+        conn.close()  # pylint: disable=no-member
 
         _set_status(
             "completed",
@@ -271,7 +269,7 @@ def background_scrape(app):
             records_added=records_added,
         )
 
-    except Exception as exc:
+    except (psycopg.Error, RuntimeError) as exc:
         _set_status(
             "error",
             f"Data pull failed: {exc}",
@@ -336,7 +334,7 @@ def create_app(test_config=None):
         else:
             try:
                 results = get_all_results()
-            except Exception as exc:
+            except (psycopg.Error, RuntimeError) as exc:
                 db_ok = False
                 db_error = str(exc)
 
@@ -469,3 +467,5 @@ if __name__ == "__main__":  # pragma: no cover
     application = create_app()
     print("Starting Flask app on http://127.0.0.1:5000")
     application.run(debug=True, threaded=True)
+
+
