@@ -450,11 +450,15 @@ def create_app(test_config=None):
     def scrape_status():
         """Return the current background-scrape state as JSON."""
         with _state_lock:
-            return jsonify({
+            response = {
                 "status": scrape_state["status"],
                 "message": scrape_state["message"],
                 "records_added": scrape_state["records_added"],
-            })
+            }
+            error = scrape_state.get("error")
+            if error is not None:
+                response["error"] = error
+            return jsonify(response)
 
     return app
 

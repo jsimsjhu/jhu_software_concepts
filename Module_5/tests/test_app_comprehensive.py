@@ -376,8 +376,8 @@ class TestBackgroundScrape:
         status = self._poll_status(app)
 
         assert status["status"] == "error"
-        assert "failure" in status.get("error", "").lower() or \
-               "connection" in status.get("error", "").lower()
+        assert "failure" in status.get("message", "").lower() or \
+               "connection" in status.get("message", "").lower()
 
 
 # ======================================================================
