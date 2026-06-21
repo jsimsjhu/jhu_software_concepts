@@ -188,14 +188,14 @@ class TestBackgroundScrape:
 
         return app_module, cursor, conn
 
-    @patch('time.sleep', return_value=None)
     def test_background_scrape_new_records_inserted(
-        self, monkeypatch, tmp_path, mock_sleep
+        self, monkeypatch, tmp_path
     ):
         """
         Verify that background_scrape inserts new records, skips existing,
         and updates scrape_state (lines 238-346).
         """
+        monkeypatch.setattr(time, "sleep", lambda x: None)
         import app as app_module
 
         cursor = MagicMock()
@@ -257,14 +257,14 @@ class TestBackgroundScrape:
         if status["status"] == "completed":
             assert status["records_added"] == 1  # only 1 new
 
-    @patch('time.sleep', return_value=None)
     def test_background_scrape_with_llm_lookup(
-        self, monkeypatch, tmp_path, mock_sleep
+        self, monkeypatch, tmp_path
     ):
         """
         Verify LLM file is loaded and merged into inserted records.
         (Covers lines 265-273.)
         """
+        monkeypatch.setattr(time, "sleep", lambda x: None)
         import app as app_module
 
         cursor = MagicMock()
@@ -324,15 +324,15 @@ class TestBackgroundScrape:
         # LLM lookup doesn't change status flow
         assert status["status"] in ("completed", "error")
 
-    @patch('time.sleep', return_value=None)
     def test_background_scrape_error_handling(
-        self, monkeypatch, tmp_path, mock_sleep
+        self, monkeypatch, tmp_path
     ):
         """
         When the scraper raises an exception, background_scrape should
         capture it, set state to 'error', and release the lock.
         (Covers lines 338-346.)
         """
+        monkeypatch.setattr(time, "sleep", lambda x: None)
         import app as app_module
 
         conn = _make_conn_with_cursor()
