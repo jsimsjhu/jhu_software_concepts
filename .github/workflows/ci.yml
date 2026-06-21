@@ -34,9 +34,6 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r Module_5/requirements.txt
 
-      - name: Install Snyk CLI
-        run: npm install -g snyk
-
       - name: Run Pylint
         env:
           PYTHONPATH: ${{ github.workspace }}/Module_5/src
@@ -44,14 +41,9 @@ jobs:
           cd Module_5
           pylint src/ --fail-under=10
 
-      #- name: Run Snyk
-        #run: |
-          #cd Module_5
-          #snyk test
-
       - name: Run Pytest with coverage
         env:
           PYTHONPATH: ${{ github.workspace }}/Module_5/src
         run: |
           cd Module_5
-          python -m pytest tests/ --cov=src --cov-report=term-missing --cov-fail-under=100
+          python -m pytest tests/ --cov=src --cov-report=term-missing --cov-fail-under=100 -v --timeout=60 -x

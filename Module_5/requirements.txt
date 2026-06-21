@@ -7,3 +7,4 @@ pylint>=3.0
 pydeps>=1.12
 pytest>=9.0
 pytest-cov>=7.0
+pytest-timeout>=2.3
