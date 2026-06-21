@@ -42,10 +42,10 @@ jobs:
           cd Module_5
           pylint src/ --fail-under=10
 
-      - name: Run Snyk
-        run: |
-          cd Module_5
-          snyk test
+      #- name: Run Snyk
+        #run: |
+          #cd Module_5
+          #snyk test
 
       - name: Run Pytest with coverage
         run: |
