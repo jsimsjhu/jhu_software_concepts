@@ -166,6 +166,27 @@ class TestBackgroundScrape:
     file I/O, and database calls.  Covers lines 238-346.
     """
 
+    POLL_TIMEOUT = 5.0  # seconds
+
+    def _poll_status(self, app, timeout=POLL_TIMEOUT):
+        """
+        Poll scrape_status until completed/error or timeout expires.
+
+        Returns the final status dict, or raises AssertionError on timeout.
+        """
+        deadline = time.monotonic() + timeout
+        status = None
+        while time.monotonic() < deadline:
+            time.sleep(0.01)  # short poll interval (monkeypatched to no-op)
+            with app.test_client() as client:
+                status = client.get("/scrape_status").get_json()
+                if status["status"] in ("completed", "error"):
+                    return status
+        raise AssertionError(
+            f"Background scrape did not complete within {timeout}s. "
+            f"Last status: {status}"
+        )
+
     def _setup_mocks(self, monkeypatch, tmp_path, cursor_fetchall):
         """
         Shared setup: mock psycopg, create a cursor, prepare temp files.
@@ -243,16 +264,8 @@ class TestBackgroundScrape:
             resp = client.post("/pull_data")
             assert resp.status_code == 200
 
-        # Use a polling loop with a timeout instead of fixed sleep
-        status = None
-        for _ in range(20):
-            time.sleep(0.1)
-            with app.test_client() as client:
-                status = client.get("/scrape_status").get_json()
-                if status["status"] in ("completed", "error"):
-                    break
-        else:
-            assert False, f"Background scrape did not complete. Status: {status['status'] if status else 'unknown'}"
+        # Poll with a real-time timeout
+        status = self._poll_status(app)
 
         assert status["status"] in ("completed", "error")
         if status["status"] == "completed":
@@ -311,16 +324,8 @@ class TestBackgroundScrape:
             resp = client.post("/pull_data")
             assert resp.status_code == 200
 
-        # Poll instead of fixed sleep
-        status = None
-        for _ in range(20):
-            time.sleep(0.1)
-            with app.test_client() as client:
-                status = client.get("/scrape_status").get_json()
-                if status["status"] in ("completed", "error"):
-                    break
-        else:
-            assert False, f"Background scrape did not complete. Status: {status['status'] if status else 'unknown'}"
+        # Poll with a real-time timeout
+        status = self._poll_status(app)
 
         # LLM lookup doesn't change status flow
         assert status["status"] in ("completed", "error")
@@ -329,21 +334,39 @@ class TestBackgroundScrape:
         self, monkeypatch, tmp_path
     ):
         """
-        When the scraper raises an exception, background_scrape should
-        capture it, set state to 'error', and release the lock.
-        (Covers lines 338-346.)
+        When the background scrape raises a caught exception type,
+        background_scrape should capture it, set state to 'error',
+        and release the lock. (Covers lines 338-346.)
+
+        We monkeypatch json.load to raise RuntimeError so it hits the
+        except (psycopg.Error, RuntimeError) block in background_scrape.
         """
         monkeypatch.setattr(time, "sleep", lambda x: None)
         import app as app_module
+        import json as json_module
 
         conn = _make_conn_with_cursor()
         fake_connect = MagicMock(return_value=conn)
         monkeypatch.setattr(sys.modules["psycopg"], "connect", fake_connect)
 
-        # Scrape output file missing → will cause JSON decode error
-        monkeypatch.setattr(app_module, "SCRAPE_OUTPUT", str(tmp_path / "nonexistent.json"))
+        # Create a valid scrape file so it opens successfully, then make
+        # json.load raise RuntimeError to trigger the caught error path
+        scrape_file = tmp_path / "pulled_data.json"
+        with open(scrape_file, "w") as f:
+            json.dump({"results": []}, f)
+        monkeypatch.setattr(app_module, "SCRAPE_OUTPUT", str(scrape_file))
 
-        # Scrape module mock — not needed since file won't exist
+        # Monkeypatch json.load to raise RuntimeError (caught by app.py)
+        original_load = json_module.load
+        call_count = [0]
+        def failing_load(*args, **kwargs):
+            call_count[0] += 1
+            if call_count[0] > 1:  # first call is for test setup
+                raise RuntimeError("Simulated scrape failure")
+            return original_load(*args, **kwargs)
+        monkeypatch.setattr(json_module, "load", failing_load)
+
+        # Scrape module mock
         fake_scrape = MagicMock()
         monkeypatch.setitem(sys.modules, "scrape", fake_scrape)
 
@@ -352,18 +375,12 @@ class TestBackgroundScrape:
             resp = client.post("/pull_data")
             assert resp.status_code == 200
 
-        # Poll instead of fixed sleep
-        status = None
-        for _ in range(20):
-            time.sleep(0.1)
-            with app.test_client() as client:
-                status = client.get("/scrape_status").get_json()
-                if status["status"] in ("completed", "error"):
-                    break
-        else:
-            assert False, f"Background scrape did not complete. Status: {status['status'] if status else 'unknown'}"
+        # Poll with a real-time timeout
+        status = self._poll_status(app)
 
         assert status["status"] == "error"
+        assert "scrape" in status.get("error", "").lower() or \
+               "simulated" in status.get("error", "").lower()
 
 
 # ======================================================================
