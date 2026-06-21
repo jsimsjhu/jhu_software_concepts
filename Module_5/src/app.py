@@ -467,5 +467,3 @@ if __name__ == "__main__":  # pragma: no cover
     application = create_app()
     print("Starting Flask app on http://127.0.0.1:5000")
     application.run(debug=True, threaded=True)
-
-
