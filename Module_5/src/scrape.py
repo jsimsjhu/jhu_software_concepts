@@ -285,7 +285,7 @@ def process_single_page(driver, page_count, current_url, all_records, max_pages)
 
     try:
         driver.get(current_url)
-    except Exception:
+    except Exception:  # pylint: disable=broad-exception-caught
         return None
 
     if not wait_for_table(driver):
@@ -368,7 +368,7 @@ def get_next_page_url(driver):
             or _find_next_by_pagination(driver)
             or _find_next_by_rel(driver)
         )
-    except (TimeoutException, ValueError, AttributeError, Exception):
+    except (TimeoutException, ValueError, AttributeError, Exception):  # pylint: disable=broad-exception-caught
         return None
 
 

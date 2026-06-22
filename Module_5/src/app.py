@@ -271,7 +271,7 @@ def background_scrape(app):  # pragma: no cover
             records_added=records_added,
         )
 
-    except Exception as exc:
+    except Exception as exc:  # pylint: disable=broad-exception-caught
         _set_status(
             "error",
             f"Data pull failed: {exc}",
