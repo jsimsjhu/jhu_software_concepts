@@ -446,27 +446,37 @@ class TestUpdateAnalysisSuccess:
         monkeypatch.setattr(sys.modules["psycopg"], "connect", fake_connect)
         return create_app({"TESTING": True, "DATABASE_URL": "postgresql://t:t@localhost/t"})
 
-    def test_update_analysis_returns_html(self, app_with_results):
+    def test_update_analysis_returns_html(self, monkeypatch):
         """
         When DB returns results, update_analysis should include rendered
         HTML in the JSON response (lines 445-449).
+
+        The get_all_results() function uses:
+          - cursor.fetchone()       for Q1-Q9  (returns a single row)
+          - cursor.fetchone()[0]    for Q1-Q2, Q4-Q9 (scalar)
+          - cursor.fetchone()       for Q3 (returns whole row tuple)
+          - cursor.fetchall()       for Q10 (returns list of tuples)
         """
         from unittest.mock import patch, MagicMock
 
+        # Create a fresh app with TESTING=True and DATABASE_URL set
+        app = create_app({"TESTING": True, "DATABASE_URL": "postgresql://user:pass@localhost/db"})
+
         with patch("app.get_connection") as mock_get_conn:
             mock_cursor = MagicMock()
-            mock_cursor.fetchall.side_effect = [
-                [(42,)],                                       # Q1
-                [(65.50,)],                                    # Q2
-                [(3.45, 320.0, 155.0, 4.0)],                  # Q3
-                [(3.60,)],                                     # Q4
-                [(30.00,)],                                    # Q5
-                [(3.80,)],                                     # Q6
-                [(5,)],                                        # Q7
-                [(3,)],                                        # Q8
-                [(10,)],                                       # Q9
-                [("Fall 2026", 42)],                           # Q10 - list of tuples
+            # fetchone() is called for Q1-Q9, fetchall() only for Q10
+            mock_cursor.fetchone.side_effect = [
+                (42,),                                       # Q1
+                (65.50,),                                    # Q2
+                (3.45, 320.0, 155.0, 4.0),                  # Q3 (whole tuple)
+                (3.60,),                                     # Q4
+                (30.00,),                                    # Q5
+                (3.80,),                                     # Q6
+                (5,),                                        # Q7
+                (3,),                                        # Q8
+                (10,),                                       # Q9
             ]
+            mock_cursor.fetchall.return_value = [("Fall 2026", 42)]  # Q10
             mock_cursor.__enter__.return_value = mock_cursor
             mock_cursor.__exit__.return_value = None
             mock_conn = MagicMock()
@@ -475,7 +485,7 @@ class TestUpdateAnalysisSuccess:
             mock_conn.cursor.__exit__.return_value = None
             mock_get_conn.return_value = mock_conn
 
-            client = app_with_results.test_client()
+            client = app.test_client()
             response = client.post("/update_analysis")
             assert response.status_code == 200
             data = response.get_json()
