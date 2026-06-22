@@ -453,7 +453,7 @@ class TestUpdateAnalysisSuccess:
         """
         from unittest.mock import patch, MagicMock
 
-        with patch("src.app.get_connection") as mock_get_conn:
+        with patch("app.get_connection") as mock_get_conn:
             mock_conn = MagicMock()
             mock_cursor = MagicMock()
             mock_cursor.fetchall.return_value = [(42,)]
