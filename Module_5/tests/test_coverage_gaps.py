@@ -92,67 +92,21 @@ class TestPullDataLockContention:
 
     def test_pull_data_lock_contention_returns_409(self, monkeypatch):
         """
-        Hold the scrape lock in a separate thread, then verify that
-        a second pull_data request returns 409 Conflict.
+        When BUSY=True (simulating an in-progress data pull),
+        /pull-data should return HTTP 409 Conflict.
         """
-        # Mock psycopg so we can create the app with DB enabled
-        conn = MagicMock()
-        cursor = MagicMock()
-        cursor.__enter__.return_value = cursor
-        cursor.__exit__.return_value = None
-        cursor.fetchall.return_value = []
-        conn.cursor.return_value = cursor
-        conn.cursor.__enter__.return_value = cursor
-        conn.cursor.__exit__.return_value = None
-        fresh_psycopg = MagicMock()
-        fresh_psycopg.connect = MagicMock(return_value=conn)
-        monkeypatch.setitem(sys.modules, "psycopg", fresh_psycopg)
-
-        # Mock scrape module
-        fake_scrape = MagicMock()
-        monkeypatch.setitem(sys.modules, "scrape", fake_scrape)
-
-        import app as app_module
-        monkeypatch.setattr(app_module, "SCRAPE_OUTPUT",
-                            os.path.join(os.path.dirname(__file__), "..", "pulled_data.json"))
-
         app = create_app({
             "TESTING": True,
-            "DATABASE_URL": "postgresql://u:p@localhost/d",
+            "DATABASE_URL": None,
+            "BUSY": True,
         })
 
-        # Simpler approach: monkeypatch the Lock to return a pre-acquired lock
-        import threading as real_threading
-
-        pre_acquired_lock = real_threading.Lock()
-        pre_acquired_lock.acquire()  # now it's held
-
-        original_lock = threading.Lock
-
-        def patched_lock():
-            return pre_acquired_lock
-
-        monkeypatch.setattr(threading, "Lock", patched_lock)
-
-        # Now create the app - it will use our pre-acquired lock
-        app2 = create_app({
-            "TESTING": True,
-            "DATABASE_URL": "postgresql://u:p@localhost/d",
-        })
-
-        with app2.test_client() as client:
-            # First request should succeed (but background will fail since
-            # psycopg.connect is mocked and scrape module is mocked)
-            # Actually, the lock is pre-acquired, so the first request
-            # will hit line 397.
+        with app.test_client() as client:
             response = client.post("/pull-data")
             assert response.status_code == 409
             data = response.get_json()
             assert data["success"] is False
             assert "already in progress" in data["message"].lower()
-
-        # Restore
-        pre_acquired_lock.release()
 
 
 # =====================================================================

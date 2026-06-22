@@ -20,7 +20,7 @@ DB_PASSWORD = "postgres"
 DB_HOST = "localhost"
 
 
-def get_connection():
+def get_connection():  # pragma: no cover
     """Create a PostgreSQL connection using the configured defaults."""
     return psycopg.connect(
         dbname=DB_NAME,

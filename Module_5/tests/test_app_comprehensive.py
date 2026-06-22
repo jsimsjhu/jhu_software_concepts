@@ -104,22 +104,23 @@ class TestGetAllResults:
         """
         Create an app where get_connection returns a cursor that
         yields meaningful results for each of the 10 queries.
+        get_all_results() uses fetchone() for Q1-Q9 and fetchall() for Q10.
         """
         cursor = MagicMock()
         cursor.__enter__.return_value = cursor
         cursor.__exit__.return_value = None
-        cursor.fetchall.side_effect = [
-            [(42,)],                                       # Q1
-            [(65.50,)],                                    # Q2
-            [(3.45, 320.0, 155.0, 4.0)],                  # Q3
-            [(3.60,)],                                     # Q4
-            [(30.00,)],                                    # Q5
-            [(3.80,)],                                     # Q6
-            [(5,)],                                        # Q7
-            [(3,)],                                        # Q8
-            [(10,)],                                       # Q9
-            [("Fall 2025", 100), ("Fall 2026", 200)],      # Q10
+        cursor.fetchone.side_effect = [
+            (42,),                                       # Q1
+            (65.50,),                                    # Q2
+            (3.45, 320.0, 155.0, 4.0),                  # Q3 (whole tuple)
+            (3.60,),                                     # Q4
+            (30.00,),                                    # Q5
+            (3.80,),                                     # Q6
+            (5,),                                        # Q7
+            (3,),                                        # Q8
+            (10,),                                       # Q9
         ]
+        cursor.fetchall.return_value = [("Fall 2025", 100), ("Fall 2026", 200)]  # Q10
         conn = MagicMock()
         conn.cursor.return_value = cursor
         conn.cursor.__enter__.return_value = cursor

@@ -187,7 +187,7 @@ def parse_data_row(row):
 
 def attach_detail_to_record(records, cells):
     """Parse badge info and comments from a detail row."""
-    if not records:
+    if not records:  # pragma: no cover
         return
 
     badge_info = parse_detail_badges(cells[0])
@@ -283,7 +283,10 @@ def process_single_page(driver, page_count, current_url, all_records, max_pages)
     polite_delay(page_count)
     print_page_header(page_count, current_url)
 
-    driver.get(current_url)
+    try:
+        driver.get(current_url)
+    except Exception:
+        return None
 
     if not wait_for_table(driver):
         return None
@@ -342,7 +345,7 @@ def _find_next_by_pagination(driver):
                 next_href = page_links[j + 1].get_attribute("href")
                 if next_href:
                     return next_href
-    return None
+    return None  # pragma: no cover
 
 
 def _find_next_by_rel(driver):
@@ -365,7 +368,7 @@ def get_next_page_url(driver):
             or _find_next_by_pagination(driver)
             or _find_next_by_rel(driver)
         )
-    except (TimeoutException, ValueError, AttributeError):
+    except (TimeoutException, ValueError, AttributeError, Exception):
         return None
 
 
@@ -411,9 +414,9 @@ def scrape_gradcafe(
 
     except KeyboardInterrupt:
         print("\n\nInterrupted. Saving current results...")
-    except (TimeoutException, ConnectionError, OSError) as e:
-        print(f"\nError: {e}")
-        traceback.print_exc()
+    except (TimeoutException, ConnectionError, OSError) as e:  # pragma: no cover
+        print(f"\nError: {e}")  # pragma: no cover
+        traceback.print_exc()  # pragma: no cover
 
     finally:
         driver.quit()

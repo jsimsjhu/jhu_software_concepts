@@ -47,8 +47,7 @@ class TestAppLine361_362:
         db_error None.  We verify this by checking the rendered HTML
         does NOT contain an error message.
         """
-        # Mock a successful database connection returning data for all 10 queries
-        fresh_psycopg = MagicMock()
+        import app as app_module
         cursor = MagicMock()
         cursor.__enter__.return_value = cursor
         cursor.__exit__.return_value = None
@@ -69,8 +68,7 @@ class TestAppLine361_362:
         conn.cursor.return_value = cursor
         conn.cursor.__enter__.return_value = cursor
         conn.cursor.__exit__.return_value = None
-        fresh_psycopg.connect = MagicMock(return_value=conn)
-        monkeypatch.setitem(sys.modules, "psycopg", fresh_psycopg)
+        monkeypatch.setattr(app_module.psycopg, "connect", MagicMock(return_value=conn))
 
         app = create_app({
             "TESTING": True,

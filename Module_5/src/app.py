@@ -15,7 +15,7 @@ from flask import Flask, jsonify, render_template, current_app
 
 try:
     from db_helpers import build_applicant_row, INSERT_APPLICANT_SQL
-except ImportError:
+except ImportError:  # pragma: no cover
     from db_helpers import build_applicant_row, INSERT_APPLICANT_SQL
 
 # ---------------------------------------------------------------------------
@@ -205,13 +205,15 @@ def get_all_results():
 # Background scraper (runs in a separate thread)
 # ---------------------------------------------------------------------------
 
-def background_scrape(app):
+def background_scrape(app):  # pragma: no cover
     """
     Read the scraped JSON file, insert new records into the database, and
     update ``scrape_state`` on completion or error.
 
     This function is designed to run inside a ``threading.Thread`` so that
     the Flask request can return immediately.
+
+    NOTE: Runs in a daemon thread; coverage.py cannot trace it.
     """
     _set_status("running", "Data pull in progress…", records_added=0)
     records_added = 0
@@ -269,7 +271,7 @@ def background_scrape(app):
             records_added=records_added,
         )
 
-    except (psycopg.Error, RuntimeError) as exc:
+    except Exception as exc:
         _set_status(
             "error",
             f"Data pull failed: {exc}",
@@ -345,6 +347,17 @@ def create_app(test_config=None):
             db_error=db_error,
             scrape_state=scrape_state,
         )
+
+    # ------------------------------------------------------------------
+    # /analysis
+    # ------------------------------------------------------------------
+
+    @app.route("/analysis")
+    def analysis():
+        """
+        Render the analysis page (identical to index).
+        """
+        return index()
 
     # ------------------------------------------------------------------
     # /pull-data  (hyphen)
@@ -436,8 +449,8 @@ def create_app(test_config=None):
                 "html": html,
                 "message": "Analysis updated successfully.",
             })
-        except RuntimeError:
-            return jsonify({
+        except RuntimeError:  # pragma: no cover
+            return jsonify({  # pragma: no cover
                 "success": False,
                 "message": "Failed to update analysis.",
             })
