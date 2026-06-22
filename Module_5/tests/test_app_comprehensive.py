@@ -454,11 +454,22 @@ class TestUpdateAnalysisSuccess:
         from unittest.mock import patch, MagicMock
 
         with patch("app.get_connection") as mock_get_conn:
-            mock_conn = MagicMock()
             mock_cursor = MagicMock()
-            mock_cursor.fetchall.return_value = [(42,)]
+            mock_cursor.fetchall.side_effect = [
+                [(42,)],                                       # Q1
+                [(65.50,)],                                    # Q2
+                [(3.45, 320.0, 155.0, 4.0)],                  # Q3
+                [(3.60,)],                                     # Q4
+                [(30.00,)],                                    # Q5
+                [(3.80,)],                                     # Q6
+                [(5,)],                                        # Q7
+                [(3,)],                                        # Q8
+                [(10,)],                                       # Q9
+                [("Fall 2026", 42)],                           # Q10 - list of tuples
+            ]
             mock_cursor.__enter__.return_value = mock_cursor
             mock_cursor.__exit__.return_value = None
+            mock_conn = MagicMock()
             mock_conn.cursor.return_value = mock_cursor
             mock_conn.cursor.__enter__.return_value = mock_cursor
             mock_conn.cursor.__exit__.return_value = None
