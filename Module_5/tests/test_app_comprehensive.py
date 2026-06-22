@@ -451,14 +451,27 @@ class TestUpdateAnalysisSuccess:
         When DB returns results, update_analysis should include rendered
         HTML in the JSON response (lines 445-449).
         """
-        client = app_with_results.test_client()
-        response = client.post("/update_analysis")
-        assert response.status_code == 200
-        data = response.get_json()
-        assert data["success"] is True
-        assert "html" in data
-        assert "Answer:" in data["html"]
-        assert data["message"] == "Analysis updated successfully."
+        from unittest.mock import patch, MagicMock
+
+        with patch("src.app.get_connection") as mock_get_conn:
+            mock_conn = MagicMock()
+            mock_cursor = MagicMock()
+            mock_cursor.fetchall.return_value = [(42,)]
+            mock_cursor.__enter__.return_value = mock_cursor
+            mock_cursor.__exit__.return_value = None
+            mock_conn.cursor.return_value = mock_cursor
+            mock_conn.cursor.__enter__.return_value = mock_cursor
+            mock_conn.cursor.__exit__.return_value = None
+            mock_get_conn.return_value = mock_conn
+
+            client = app_with_results.test_client()
+            response = client.post("/update_analysis")
+            assert response.status_code == 200
+            data = response.get_json()
+            assert data["success"] is True
+            assert "html" in data
+            assert "Answer:" in data["html"]
+            assert data["message"] == "Analysis updated successfully."
 
     def test_update_analysis_via_busy_flag(self):
         """
