@@ -1,0 +1,26 @@
+[MAIN]
+ignore=venv,.venv,tests
+
+[MESSAGES CONTROL]
+disable=
+    C0114,
+    C0115,
+    C0116,
+    R0903,
+    R0801,
+    E0401,
+    W0611,
+    W0612,
+    W0613
+
+[TYPECHECK]
+generated-members=
+    cursor.*,
+    connection.*
+
+[MASTER]
+extension-pkg-allow-list=
+    pika,
+    psycopg,
+    selenium,
+    bs4
