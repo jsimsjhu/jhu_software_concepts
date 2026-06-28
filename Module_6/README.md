@@ -11,14 +11,36 @@ A multi-service Flask + RabbitMQ + PostgreSQL + worker application using Docker 
 
 ## Prerequisites
 
-- Docker Desktop
-- Docker Compose
+- **Docker Desktop** (or Docker Engine + Docker Compose plugin)
+  - Windows: Docker Desktop for Windows
+  - macOS: Docker Desktop for Mac
+  - Linux: Docker Engine + Docker Compose plugin
+- Git
+
+## Environment Variables
+
+The following environment variables are used by the services:
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `DATABASE_URL` | PostgreSQL connection string | `postgresql://app_user:app_password@db:5432/postgres` |
+| `RABBITMQ_URL` | RabbitMQ AMQP connection string | `amqp://guest:guest@rabbitmq:5672/` |
+
+## Ports
+
+| Service | Port | Description |
+|---------|------|-------------|
+| Web | 8080 | Flask application |
+| RabbitMQ Management | 15672 | Web UI (guest/guest) |
+| RabbitMQ AMQP | 5672 | Message broker |
+| PostgreSQL | 5432 | Database |
 
 ## Quick Start
 
 ```bash
 # Clone the repository
 git clone <your-repo-url>
+cd module_6
 
 # Start the stack
 docker compose up --build
@@ -28,13 +50,3 @@ http://localhost:8080
 
 # RabbitMQ Management UI
 http://localhost:15672 (guest/guest)
-## Docker Hub Images
-
-- Web: [jsimsjhu/module_6-web:v1](https://hub.docker.com/r/jsimsjhu/module_6-web)
-- Worker: [jsimsjhu/module_6-worker:v1](https://hub.docker.com/r/jsimsjhu/module_6-worker)
-
-## Pull and Run
-
-```bash
-docker pull jsimsjhu/module_6-web:v1
-docker pull jsimsjhu/module_6-worker:v1
