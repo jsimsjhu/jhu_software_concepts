@@ -49,52 +49,74 @@ def update_watermark(conn, source, last_seen):
 def handle_scrape_new_data(conn, payload):
     """Scrape new data since the last watermark."""
     print(f"Handling scrape_new_data with payload: {payload}")
-
+    
     source = payload.get("source", "gradcafe")
-    since = payload.get("since") or get_watermark(conn, source)
-
-    # Call your scraper with the since parameter
-    # For now, we'll simulate
-    new_data = []  # Replace with actual scraper call
-
-    # Insert new records
-    inserted = 0
-    if new_data:
+    since = payload.get("since")
+    
+    # Get watermark if no since provided
+    if not since:
         with conn.cursor() as cur:
-            for item in new_data:
-                cur.execute("""
-                    INSERT INTO applicants (
-                        program, comments, date_added, url, status, term,
-                        us_or_international, gpa, gre, gre_v, gre_aw, degree,
-                        llm_generated_program, llm_generated_university
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                    ON CONFLICT (url) DO NOTHING
-                """, (
-                    item.get("program"),
-                    item.get("comments"),
-                    item.get("added_on"),
-                    item.get("result_url"),
-                    item.get("acceptance_status"),
-                    item.get("term"),
-                    item.get("applicant_type"),
-                    item.get("gpa"),
-                    item.get("gre_quant"),
-                    item.get("gre_verbal"),
-                    item.get("gre_aw"),
-                    item.get("degree"),
-                    item.get("llm_generated_program"),
-                    item.get("llm_generated_university"),
-                ))
-                inserted += 1
-
-        # Update watermark with latest timestamp
-        if inserted > 0:
-            latest = max(item.get("added_on") for item in new_data if item.get("added_on"))
-            update_watermark(conn, source, latest)
-
-    conn.commit()
-    print(f"Inserted {inserted} new records")
-    return True
+            cur.execute("SELECT last_seen FROM ingestion_watermarks WHERE source = %s;", (source,))
+            result = cur.fetchone()
+            since = result[0] if result else None
+    
+    print(f"Scraping data since: {since}")
+    
+    try:
+        # Call the actual scraper
+        from scrape import scrape_gradcafe
+        results = scrape_gradcafe(
+            search_query="computer science",
+            max_pages=2,
+            headless=True
+        )
+        
+        inserted = 0
+        if results:
+            with conn.cursor() as cur:
+                for entry in results:
+                    cur.execute("""
+                        INSERT INTO applicants (
+                            program, comments, date_added, url, status, term,
+                            us_or_international, gpa, gre, gre_v, gre_aw, degree,
+                            llm_generated_program, llm_generated_university
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        ON CONFLICT (url) DO NOTHING
+                    """, (
+                        entry.get("program"),
+                        entry.get("comments"),
+                        entry.get("added_on"),
+                        entry.get("result_url"),
+                        entry.get("acceptance_status"),
+                        entry.get("term"),
+                        entry.get("applicant_type"),
+                        entry.get("gpa"),
+                        entry.get("gre_quant"),
+                        entry.get("gre_verbal"),
+                        entry.get("gre_aw"),
+                        entry.get("degree"),
+                        entry.get("llm_generated_program"),
+                        entry.get("llm_generated_university"),
+                    ))
+                    inserted += 1
+                
+                # Update watermark with latest date
+                if inserted > 0:
+                    latest_date = max(r.get("added_on") for r in results if r.get("added_on"))
+                    cur.execute("""
+                        INSERT INTO ingestion_watermarks (source, last_seen, updated_at)
+                        VALUES (%s, %s, now())
+                        ON CONFLICT (source) DO UPDATE SET last_seen = EXCLUDED.last_seen, updated_at = now();
+                    """, (source, latest_date))
+        
+        conn.commit()
+        print(f"Inserted {inserted} new records")
+        return True
+        
+    except Exception as e:
+        print(f"Scrape error: {e}")
+        conn.rollback()
+        return False
 
 
 def handle_recompute_analytics(conn, payload):
