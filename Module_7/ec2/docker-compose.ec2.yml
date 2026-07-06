@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  web:
+    image: jsimsjhu/module_6-web:v1
+    ports:
+      - "8080:8080"
+    environment:
+      DATABASE_URL: postgresql://app_user:app_password@db:5432/postgres
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
+    depends_on:
+      - db
+      - rabbitmq
+    networks:
+      - gradcafe_network
+
+  worker:
+    image: jsimsjhu/module_6-worker:v1
+    environment:
+      DATABASE_URL: postgresql://app_user:app_password@db:5432/postgres
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
+    depends_on:
+      - db
+      - rabbitmq
+    networks:
+      - gradcafe_network
+
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - gradcafe_network
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "15672:15672"
+    networks:
+      - gradcafe_network
+
+volumes:
+  postgres_data:
+
+networks:
+  gradcafe_network:
+    driver: bridge
