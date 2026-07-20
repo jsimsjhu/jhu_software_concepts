@@ -6,7 +6,6 @@ between diamond features and their market prices. It combines
 static Seaborn plots with interactive Plotly visualizations.
 """
 
-import os
 # Enable serving static files
 import dash
 from dash import html, dcc
@@ -112,4 +111,4 @@ if __name__ == '__main__':
     print("Open your browser to: http://127.0.0.1:8050")
     print("Press Ctrl+C to stop the server")
     print(" =" * 60)
-    app.run(debug=True, port=8050)
+    app.run(debug=False, port=8050)
