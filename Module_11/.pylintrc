@@ -1,0 +1,6 @@
+[MASTER]
+extension-pkg-allow-list=wandb
+
+[TYPECHECK]
+generated-members=
+    wandb.*
