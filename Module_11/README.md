@@ -45,7 +45,7 @@ Run details with parameters and inertia metric
 Registered model in MLflow Model Registry
 
 ## 6. Dataset
-This pipeline uses the same Grad Café dataset from Module 9. The data is loaded from ../Module_9/cleaned_gradcafe.json or falls back to raw data if not available.
+This pipeline uses the Grad Café dataset. The script first checks for `applicant_data.json` in the local folder. If not found, it falls back to `../Module_9/cleaned_gradcafe.json` or the raw data from Module 6.
 
 ## 7. Optional wandb Extension
 To run with wandb tracking instead, set USE_WANDB = True in the script:
