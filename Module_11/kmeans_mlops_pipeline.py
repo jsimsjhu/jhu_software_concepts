@@ -39,21 +39,22 @@ PARAMS = {
 # ---------------------------------------------------------------------------
 
 def load_data():
-    """Load the Grad Café dataset from Module 9 or fallback to raw data."""
-    # Try to load cleaned data from Module 9
+    """Load the Grad Café dataset from the local file or fallback."""
+    # Try local dataset first
+    local_path = "applicant_data.json"
+    if os.path.exists(local_path):
+        with open(local_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        df = pd.DataFrame(data["results"])
+        print(f"[OK] Loaded local data: {len(df)} rows")
+        return df
+
+    # Try cleaned data from Module 9
     if os.path.exists("../Module_9/cleaned_gradcafe.json"):
         with open("../Module_9/cleaned_gradcafe.json", "r", encoding="utf-8") as f:
             data = json.load(f)
         df = pd.DataFrame(data)
         print(f"[OK] Loaded cleaned data from Module_9: {len(df)} rows")
-        return df
-
-    # Fallback to raw data
-    if os.path.exists("../Module_6/src/data/applicant_data.json"):
-        with open("../Module_6/src/data/applicant_data.json", "r", encoding="utf-8") as f:
-            data = json.load(f)
-        df = pd.DataFrame(data["results"])
-        print(f"[OK] Loaded raw data: {len(df)} rows")
         return df
 
     raise FileNotFoundError("No data file found!")
