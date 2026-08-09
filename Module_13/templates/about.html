@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About | GradCafe Admissions Predictor</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #f5f7fa; padding: 40px; }
+        .container { max-width: 700px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        h1 { color: #00274c; }
+        .back { margin-top: 20px; display: inline-block; color: #00274c; text-decoration: none; }
+        .back:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>About This Project</h1>
+    <p><strong>What is this?</strong></p>
+    <p>This is a class project for JHU Software Concepts. It uses a fine-tuned transformer model (DistilBERT) to predict graduate admissions outcomes based on self-reported GradCafe data.</p>
+
+    <p><strong>How does it work?</strong></p>
+    <p>The model combines text fields (program name, comments) with structured fields (GPA, GRE, degree, citizenship) into a unified text input, then fine-tunes a pretrained language model for binary classification (Accepted vs Rejected).</p>
+
+    <p><strong>Disclaimer</strong></p>
+    <p>This model is trained on <strong>scraped, self-reported data</strong> from GradCafe. It is <strong>not</strong> a real admissions decision tool. The predictions are for educational purposes only and should not be used for actual admissions decisions.</p>
+
+    <a href="/" class="back">← Back to Predictor</a>
+</div>
+</body>
+</html>

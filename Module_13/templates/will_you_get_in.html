@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Will You Get In? | GradCafe Admissions Predictor</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f7fa;
+            color: #333;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #00274c;
+            border-bottom: 3px solid #00274c;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        .disclaimer {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 12px 16px;
+            margin: 20px 0;
+            border-radius: 4px;
+            font-size: 14px;
+            color: #856404;
+        }
+        .form-group {
+            margin-bottom: 16px;
+        }
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 4px;
+            font-size: 14px;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+        .row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+        .btn {
+            background: #00274c;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            width: 100%;
+            font-weight: 600;
+        }
+        .btn:hover {
+            background: #004b87;
+        }
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        #result {
+            margin-top: 24px;
+            padding: 20px;
+            border-radius: 8px;
+            display: none;
+        }
+        #result.accepted {
+            background: #d4edda;
+            border: 2px solid #28a745;
+            display: block;
+        }
+        #result.rejected {
+            background: #f8d7da;
+            border: 2px solid #dc3545;
+            display: block;
+        }
+        #result h2 {
+            margin-bottom: 8px;
+        }
+        #result .score {
+            font-size: 24px;
+            font-weight: 700;
+        }
+        .confidence {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .confidence-high { background: #28a745; color: white; }
+        .confidence-medium { background: #ffc107; color: #333; }
+        .confidence-low { background: #dc3545; color: white; }
+        .spinner {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .spinner.show {
+            display: block;
+        }
+        .spinner div {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #00274c;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .error {
+            color: #dc3545;
+            margin-top: 10px;
+            padding: 10px;
+            background: #f8d7da;
+            border-radius: 6px;
+            display: none;
+        }
+        @media (max-width: 600px) {
+            .row {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>🎓 Will You Get In?</h1>
+    <p style="font-size:16px; color:#555; margin-bottom:12px;">
+        Enter your applicant information below to receive a prediction from our AI model.
+    </p>
+
+    <div class="disclaimer">
+        <strong>⚠️ Disclaimer:</strong> This is a course project model trained on scraped self-reported GradCafe data.
+        It is <strong>not</strong> a real admissions decision tool. The predictions are for educational purposes only.
+    </div>
+
+    <form id="prediction-form">
+        <div class="form-group">
+            <label for="program">Program Name *</label>
+            <input type="text" id="program" name="program" placeholder="e.g., Computer Science" required>
+        </div>
+
+        <div class="row">
+            <div class="form-group">
+                <label for="degree">Degree</label>
+                <select id="degree" name="degree">
+                    <option value="">Select...</option>
+                    <option value="Masters">Master's</option>
+                    <option value="PhD">PhD</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="us_or_international">Citizenship</label>
+                <select id="us_or_international" name="us_or_international">
+                    <option value="">Select...</option>
+                    <option value="American">American / Local</option>
+                    <option value="International">International</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="comments">Comments / Statement</label>
+            <textarea id="comments" name="comments" placeholder="Describe your background, research experience, publications, etc."></textarea>
+        </div>
+
+        <div class="row">
+            <div class="form-group">
+                <label for="gpa">GPA</label>
+                <input type="number" id="gpa" name="gpa" step="0.01" min="0" max="4.0" placeholder="e.g., 3.8">
+            </div>
+            <div class="form-group">
+                <label for="term">Term</label>
+                <input type="text" id="term" name="term" placeholder="e.g., Fall 2026">
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="form-group">
+                <label for="gre">GRE Quant</label>
+                <input type="number" id="gre" name="gre" step="1" min="130" max="170" placeholder="e.g., 165">
+            </div>
+            <div class="form-group">
+                <label for="gre_v">GRE Verbal</label>
+                <input type="number" id="gre_v" name="gre_v" step="1" min="130" max="170" placeholder="e.g., 160">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="gre_aw">GRE AW</label>
+            <input type="number" id="gre_aw" name="gre_aw" step="0.5" min="0" max="6" placeholder="e.g., 4.5">
+        </div>
+
+        <div class="form-group">
+            <label for="llm_generated_program">LLM Program (optional)</label>
+            <input type="text" id="llm_generated_program" name="llm_generated_program" placeholder="e.g., Computer Science">
+        </div>
+
+        <div class="form-group">
+            <label for="llm_generated_university">LLM University (optional)</label>
+            <input type="text" id="llm_generated_university" name="llm_generated_university" placeholder="e.g., Johns Hopkins University">
+        </div>
+
+        <button type="submit" class="btn" id="submit-btn">Predict</button>
+    </form>
+
+    <div class="spinner" id="spinner">
+        <div></div>
+        <p style="margin-top:10px;">Making prediction...</p>
+    </div>
+
+    <div id="result">
+        <h2>Prediction: <span id="prediction-label"></span></h2>
+        <p class="score">Confidence: <span id="probability"></span>%</p>
+        <p>Confidence Level: <span class="confidence" id="confidence-level"></span></p>
+        <p style="margin-top:12px; font-size:14px; color:#666;">
+            <em>This prediction is based on a model trained on self-reported GradCafe data.</em>
+        </p>
+    </div>
+
+    <div class="error" id="error-message"></div>
+</div>
+
+<script>
+    document.getElementById('prediction-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const form = this;
+        const submitBtn = document.getElementById('submit-btn');
+        const spinner = document.getElementById('spinner');
+        const resultDiv = document.getElementById('result');
+        const errorDiv = document.getElementById('error-message');
+        const predictionLabel = document.getElementById('prediction-label');
+        const probabilitySpan = document.getElementById('probability');
+        const confidenceSpan = document.getElementById('confidence-level');
+
+        // Reset UI
+        resultDiv.style.display = 'none';
+        errorDiv.style.display = 'none';
+        submitBtn.disabled = true;
+        spinner.classList.add('show');
+
+        const formData = new FormData(form);
+
+        try {
+            const response = await fetch('/predict', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (data.error) {
+                errorDiv.textContent = data.error;
+                errorDiv.style.display = 'block';
+                return;
+            }
+
+            // Display result
+            predictionLabel.textContent = data.prediction;
+            probabilitySpan.textContent = (data.probability * 100).toFixed(1);
+
+            // Confidence level
+            const confidence = data.confidence;
+            confidenceSpan.textContent = confidence;
+            confidenceSpan.className = 'confidence confidence-' + confidence.toLowerCase();
+
+            resultDiv.className = data.prediction.toLowerCase();
+            resultDiv.style.display = 'block';
+
+        } catch (err) {
+            errorDiv.textContent = 'An error occurred. Please try again.';
+            errorDiv.style.display = 'block';
+        } finally {
+            submitBtn.disabled = false;
+            spinner.classList.remove('show');
+        }
+    });
+</script>
+</body>
+</html>
