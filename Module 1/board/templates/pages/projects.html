@@ -1,8 +1,17 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h2>Projects</h2>
-<h3>Module 1: Personal Website</h3>
-<p>This Flask website is my first project in the JHU Python course. It demonstrates routing, templates, and static files.</p>
-<p>GitHub: <a href="https://github.com/jsimsjhu">Repository Link</a></p>
+<h2>My Projects</h2>
+<p class="subtitle">A complete portfolio of work from the JHU Python course</p>
+
+<div class="projects-grid">
+    {% for project in projects %}
+    <div class="project-card">
+        <h3>{{ project.title }}</h3>
+        <p class="project-overview">{{ project.overview }}</p>
+        <p><strong>What I learned:</strong> {{ project.learning }}</p>
+        <a href="{{ project.folder_link }}" target="_blank" class="github-link">View on GitHub →</a>
+    </div>
+    {% endfor %}
+</div>
 {% endblock %}

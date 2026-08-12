@@ -1,0 +1,93 @@
+[
+    {
+        "id": "module_1",
+        "title": "Module 1: Personal Website",
+        "overview": "Built a personal website with a Projects page using Flask, HTML, and CSS. This was the foundation for the semester's web development work.",
+        "folder_link": "https://github.com/jsimsjhu/jhu_software_concepts/tree/main/Module%201",
+        "learning": "Learned the basics of Flask routing, templating, and serving static files."
+    },
+    {
+        "id": "module_2",
+        "title": "Module 2: Python Foundations & Scraping",
+        "overview": "Developed web scraping capabilities using BeautifulSoup and Selenium to collect GradCafe admissions data.",
+        "folder_link": "https://github.com/jsimsjhu/jhu_software_concepts/tree/main/Module_2",
+        "learning": "Strengthened Python skills and learned to extract data from websites."
+    },
+    {
+        "id": "module_3",
+        "title": "Module 3: SQL and Database Queries",
+        "overview": "Designed and queried a PostgreSQL database for GradCafe admissions data.",
+        "folder_link": "https://github.com/jsimsjhu/jhu_software_concepts/tree/main/Module_3",
+        "learning": "Learned to write complex SQL queries, joins, and aggregations."
+    },
+    {
+        "id": "module_4",
+        "title": "Module 4: Testing and Documentation",
+        "overview": "Added unit tests with Pytest and documentation with Sphinx.",
+        "folder_link": "https://github.com/jsimsjhu/jhu_software_concepts/tree/main/Module_4",
+        "learning": "Understood the importance of test coverage and professional documentation."
+    },
+    {
+        "id": "module_5",
+        "title": "Module 5: Flask Web Application",
+        "overview": "Built a Flask web app with database integration and analysis pages.",
+        "folder_link": "https://github.com/jsimsjhu/jhu_software_concepts/tree/main/Module_5",
+        "learning": "Integrated SQL with Flask to create dynamic web pages."
+    },
+    {
+        "id": "module_6",
+        "title": "Module 6: Microservices with Docker & RabbitMQ",
+        "overview": "Deployed a multi-service application with Flask, PostgreSQL, RabbitMQ, and a worker.",
+        "folder_link": "https://github.com/jsimsjhu/jhu_software_concepts/tree/main/Module_6",
+        "learning": "Learned containerization and message-based architecture."
+    },
+    {
+        "id": "module_7",
+        "title": "Module 7: AWS S3, SageMaker, and EC2",
+        "overview": "Built a cloud pipeline with S3, SageMaker, and deployed to EC2.",
+        "folder_link": "https://github.com/jsimsjhu/jhu_software_concepts/tree/main/Module_7",
+        "learning": "Gained hands-on experience with AWS services and cloud deployment."
+    },
+    {
+        "id": "module_8",
+        "title": "Module 8: Data Cleaning and EDA",
+        "overview": "Cleaned, validated, and analyzed GradCafe data using Pandas and SciPy.",
+        "folder_link": "https://github.com/jsimsjhu/jhu_software_concepts/tree/main/Module_8",
+        "learning": "Developed data cleaning workflows and exploratory analysis skills."
+    },
+    {
+        "id": "module_9",
+        "title": "Module 9: K-Means Clustering",
+        "overview": "Applied K-Means clustering to group similar program names using scikit-learn.",
+        "folder_link": "https://github.com/jsimsjhu/jhu_software_concepts/tree/main/Module_9",
+        "learning": "Learned unsupervised learning and clustering evaluation."
+    },
+    {
+        "id": "module_10",
+        "title": "Module 10: Data Dashboard",
+        "overview": "Built an interactive dashboard with Dash and Plotly.",
+        "folder_link": "https://github.com/jsimsjhu/jhu_software_concepts/tree/main/Module_10",
+        "learning": "Created interactive visualizations and learned dashboard design."
+    },
+    {
+        "id": "module_11",
+        "title": "Module 11: MLOps Tracking",
+        "overview": "Tracked K-Means experiments with MLflow and wandb.",
+        "folder_link": "https://github.com/jsimsjhu/jhu_software_concepts/tree/main/Module_11",
+        "learning": "Learned experiment tracking and model registry concepts."
+    },
+    {
+        "id": "module_12",
+        "title": "Module 12: Neural Network from Scratch",
+        "overview": "Implemented a two-layer neural network using NumPy only.",
+        "folder_link": "https://github.com/jsimsjhu/jhu_software_concepts/tree/main/Module_12",
+        "learning": "Deepened understanding of backpropagation and gradient descent."
+    },
+    {
+        "id": "module_13",
+        "title": "Module 13: Multimodal Admissions Prediction",
+        "overview": "Fine-tuned a DistilBERT model on GradCafe data and deployed it in a Flask app.",
+        "folder_link": "https://github.com/jsimsjhu/jhu_software_concepts/tree/main/Module_13",
+        "learning": "Learned PyTorch, Hugging Face, and full-stack ML deployment."
+    }
+]
